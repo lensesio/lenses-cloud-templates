@@ -1,0 +1,306 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vmName": {
+      "type": "string",
+      "defaultValue": "lenses",
+      "metadata": {
+        "description": "Name of the VM"
+      }
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_DS2_v2",
+      "allowedValues": [
+        "Standard_DS2_v2",
+        "Standard_DS3_v2",
+        "Standard_DS4_v2",
+        "Standard_DS5_v2"
+      ],
+      "metadata": {
+        "description": "Size of the VM"
+      }
+    },
+    "sshAdmin": {
+      "type": "string",
+      "defaultValue": "ubuntu",
+      "metadata": {
+        "description": "Size of the VM"
+      }
+    },
+    "sshPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Size of the VM"
+      }
+    },
+    "existingVirtualNetworkName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the existing VNET"
+      }
+    },
+    "existingVirtualNetworkResourceGroup":{  
+      "type":"string",
+      "defaultValue":"[resourceGroup().name]",
+      "metadata":{  
+         "description":"Name of the existing VNET resource group"
+      }
+   },
+    "subnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the subnet in the virtual network you want to use"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    },
+    "lensesLicense": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Your own license for Lenses. Please download it here https://www.landoop.com/downloads/"
+      }
+    },
+    "lensesPort": {
+      "type": "string",
+      "defaultValue": "9991",
+      "metadata": {
+        "description": "The port which Lenses will use to run (Required)"
+      }
+    },
+    "kafkaBrokers": {
+      "type": "string",
+      "metadata": {
+        "description": "The Brokers hosts. eg. PLAINTEXT//kafka-1:9092 (Required)"
+      }
+    },
+    "zookeeper": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Zookeeper hosts. (Optional)"
+      }
+    },
+    "schemaRegistry": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Schema Registry hosts. (Optional)"
+      }
+    },
+    "connect": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Connect hosts. (Optional)"
+      }
+    }
+  },
+  "variables": {
+    "diagStorageAccountName": "[concat(parameters('vmName'), 'diag')]",
+    "diskStorageType": "Standard_LRS",
+    "publicIPAddressType": "Dynamic",
+    "subnetRef": "[resourceId(parameters('existingVirtualNetworkResourceGroup'), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVirtualNetworkName'),  parameters('subnetName'))]",
+    "nicName": "[concat(parameters('vmName'), '-nic1')]",
+    "nsgName": "[concat(parameters('vmName'), '-secgroup')]",
+    "nsgID": "[resourceId('Microsoft.Network/networkSecurityGroups',variables('nsgName'))]",
+    "publicIPAddressName": "[concat(parameters('vmName'), '-pip')]",
+    "imagePublisher": "Canonical",
+    "imageOffer": "UbuntuServer",
+    "ubuntuOSVersion": "18.04-LTS",
+    "singleQuote": "'",
+    "securityGroups": [
+      {"name": "adminGroup", "roles": ["admin", "write", "read"]},
+      {"name": "readGroup",  "roles": ["read"]}
+    ],
+    "securityUsers": [
+      {"username": "admin", "password": "admin", "displayname": "Lenses Admin", "groups": ["adminGroup"]},
+      {"username": "read", "password": "read", "displayname": "Read Only", "groups": ["readGroup"]}
+    ],
+    "lensesPortConf": "[concat('lenses.port', '=', parameters('lensesPort'))]",
+    "lensesBrokersConf": "[concat('lenses.kafka.brokers', '=', variables('singleQuote'), '\"', parameters('kafkaBrokers'), '\"' ,variables('singleQuote') )]",
+    "lensesZookeperConf": "[concat('lenses.zookeeper.hosts', '=', variables('singleQuote'), if(equals(parameters('zookeeper'), ''), '[]', parameters('zookeeper')), variables('singleQuote'))]",
+    "lensesSchemaRegistry": "[concat('lenses.schema.registry.urls', '=', variables('singleQuote'), if(equals(parameters('schemaRegistry'), ''), '[]', parameters('schemaRegistry')), variables('singleQuote'))]",
+    "lensesConnect": "[concat('lenses.connect.clusters', '=', variables('singleQuote'),  if(equals(parameters('connect'), ''), '[]', parameters('connect')), variables('singleQuote'))]",
+    "lensesSqlStateConf": "[concat('lenses.sql.state.dir=', '=', 'kafka-streams-state')]",
+    "lensesSecretFile": "[concat('lenses.secret.file', '=', 'security.conf')]",
+    "lensesLicense": "[concat('lenses.license.file', '=', 'license.json')]",
+    "lensesSecGroup": "[concat('lenses.security.groups', '=', string(variables('securityGroups')))]",
+    "lensesSecUsers": "[concat('lenses.security.users', '=', string(variables('securityUsers')))]",
+    "lensesSecMode": "lenses.security.mode=BASIC"
+  },
+  "resources": [
+    {
+      "apiVersion": "2018-02-01",
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[variables('diagStorageAccountName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_GRS"
+      },
+      "kind": "Storage",
+      "properties": {}
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[variables('publicIPAddressName')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "PublicIPAddress"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "[variables('publicIPAddressType')]"
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[concat(parameters('vmName'), '-nic1')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
+        "[variables('nsgID')]"
+      ],
+      "tags": {
+        "displayName": "NetworkInterface"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "lensesipconfig",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+              },
+              "subnet": {
+                "id": "[variables('subnetRef')]",
+                "networkSecurityGroup": {
+                  "id": "[variables('nsgID')]"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[variables('nsgName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "http",
+            "properties": {
+              "description": "Allow HTTP",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "80",
+              "sourceAddressPrefix": "Internet",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "ssh",
+            "properties": {
+              "description": "Allow SSH",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "Internet",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 110,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2017-03-30",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('vmName')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "lenses"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('vmName')]",
+          "adminUsername": "[parameters('sshAdmin')]",
+          "adminPassword": "[parameters('sshPassword')]"
+        },        
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOffer')]",
+            "sku": "[variables('ubuntuOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "[concat(parameters('vmName'),'_OSDisk')]",
+            "caching": "ReadWrite",
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "[variables('diskStorageType')]"
+  
+            }
+          },
+          "dataDisks": [
+            {
+              "name": "[concat(parameters('vmName'), '-state')]",
+              "diskSizeGB": "10",
+              "lun": 0,
+              "createOption": "Empty"
+            }
+          ]
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(parameters('vmName'),'/config')]",
+      "apiVersion": "2018-06-01",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.0",
+        "autoUpgradeMinorVersion": true,
+        "protectedSettings": {
+          "fileUris": ["https://archive.landoop.com/lenses/2.1/lenses-2.1.11-linux64.tar.gz"],
+          "commandToExecute": "[concat('mkfs -t ext4 /dev/sdc && mkdir /mnt/persistent && mount /dev/sdc /mnt/persistent', ' && UUID=$(blkid -s UUID -o value /dev/sdc) && echo \"',  'UUID=$UUID /mnt/persistent ext4 defaults,nofail 1 2 \"', ' >> /etc/fstab && apt-get -y update && cp lenses-2.1.11-linux64.tar.gz /mnt/persistent/ && cd /mnt/persistent && tar xvzf lenses-2.1.11-linux64.tar.gz && chmod -R 0755 lenses', ' && cd lenses && ', 'mv lenses.conf.sample lenses.conf && cat /dev/null > lenses.conf && mv security.conf.sample security.conf && cat /dev/null > security.conf && ', ' echo ', variables('lensesPortConf'), ' >> lenses.conf', ' && echo ', variables('lensesBrokersConf'), ' >> lenses.conf', ' && echo ', string(variables('lensesZookeperConf')), ' >> lenses.conf', ' && echo ', string(variables('lensesSchemaRegistry')), ' >> lenses.conf', ' && echo ', string(variables('lensesConnect')), ' >> lenses.conf', ' && echo ', variables('lensesSecMode'), ' >> security.conf', ' && echo ', variables('singleQuote'), variables('lensesSecGroup'), variables('singleQuote'), ' >> security.conf', ' && echo ', variables('singleQuote'), variables('lensesSecUsers'), variables('singleQuote'), ' >> security.conf', ' && echo ', variables('singleQuote'), parameters('lensesLicense'), variables('singleQuote'), ' >> license.json && ./bin/lenses &')]" 
+        }
+      }
+    }
+  ]
+}

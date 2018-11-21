@@ -1,0 +1,9 @@
+{
+    "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
+    "type": "QuickStart", 
+    "itemDisplayName": "Deploy Lenses with Docker",
+    "description": "This template allows you to deploy an Ubuntu VM with Docker installed (using the Custom Script Extension) and Lenses container created and configure it with HDInsight Apache Kafka or your own Apache Kafka.",
+    "summary": "Deploy Lenses using Docker",
+    "githubUsername": "spirosoik",
+    "dateUpdated": "2018-11-21"
+  }

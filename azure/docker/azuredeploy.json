@@ -1,0 +1,295 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vmName": {
+      "type": "string",
+      "defaultValue": "lenses",
+      "metadata": {
+        "description": "Name of the VM"
+      }
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_DS2_v2",
+      "allowedValues": [
+        "Standard_DS2_v2",
+        "Standard_DS3_v2",
+        "Standard_DS4_v2",
+        "Standard_DS5_v2"
+      ],
+      "metadata": {
+        "description": "Size of the VM"
+      }
+    },
+    "sshAdmin": {
+      "type": "string",
+      "defaultValue": "ubuntu",
+      "metadata": {
+        "description": "Size of the VM"
+      }
+    },
+    "sshPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Size of the VM"
+      }
+    },
+    "existingVirtualNetworkName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the existing VNET"
+      }
+    },
+    "existingVirtualNetworkResourceGroup":{  
+      "type":"string",
+      "defaultValue":"[resourceGroup().name]",
+      "metadata":{  
+         "description":"Name of the existing VNET resource group"
+      }
+   },
+    "subnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the subnet in the virtual network you want to use"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    },
+    "lensesLicense": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Your own license for Lenses. Please download it here https://www.landoop.com/downloads/"
+      }
+    },
+    "lensesPort": {
+      "type": "string",
+      "defaultValue": "9991",
+      "metadata": {
+        "description": "The port which Lenses will use to run (Required)"
+      }
+    },
+    "kafkaBrokers": {
+      "type": "string",
+      "metadata": {
+        "description": "The Brokers hosts. eg. PLAINTEXT//kafka-1:9092 (Required)"
+      }
+    },
+    "zookeeper": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Zookeeper hosts. (Optional)"
+      }
+    },
+    "schemaRegistry": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Schema Registry hosts. (Optional)"
+      }
+    },
+    "connect": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Connect hosts. (Optional)"
+      }
+    }
+  },
+  "variables": {
+    "diagStorageAccountName": "[concat(parameters('vmName'), 'diag')]",
+    "diskStorageType": "Standard_LRS",
+    "publicIPAddressType": "Dynamic",
+    "subnetRef": "[resourceId(parameters('existingVirtualNetworkResourceGroup'), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVirtualNetworkName'),  parameters('subnetName'))]",
+    "nicName": "[concat(parameters('vmName'), '-nic1')]",
+    "nsgName": "[concat(parameters('vmName'), '-secgroup')]",
+    "nsgID": "[resourceId('Microsoft.Network/networkSecurityGroups',variables('nsgName'))]",
+    "publicIPAddressName": "[concat(parameters('vmName'), '-pip')]",
+    "imagePublisher": "Canonical",
+    "imageOffer": "UbuntuServer",
+    "ubuntuOSVersion": "18.04-LTS",
+    "singleQuote": "'",
+    "securityGroups": [
+      {"name": "adminGroup", "roles": ["admin", "write", "read"]},
+      {"name": "readGroup",  "roles": ["read"]}
+    ],
+    "securityUsers": [
+      {"username": "admin", "password": "admin", "displayname": "Lenses Admin", "groups": ["adminGroup"]},
+      {"username": "read", "password": "read", "displayname": "Read Only", "groups": ["readGroup"]}
+    ]
+  },
+  "resources": [
+    {
+      "apiVersion": "2018-02-01",
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[variables('diagStorageAccountName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_GRS"
+      },
+      "kind": "Storage",
+      "properties": {}
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[variables('publicIPAddressName')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "PublicIPAddress"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "[variables('publicIPAddressType')]"
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[concat(parameters('vmName'), '-nic1')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
+        "[variables('nsgID')]"
+      ],
+      "tags": {
+        "displayName": "NetworkInterface"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "lensesipconfig",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+              },
+              "subnet": {
+                "id": "[variables('subnetRef')]",
+                "networkSecurityGroup": {
+                  "id": "[variables('nsgID')]"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[variables('nsgName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "http",
+            "properties": {
+              "description": "Allow HTTP",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "80",
+              "sourceAddressPrefix": "Internet",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "ssh",
+            "properties": {
+              "description": "Allow SSH",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "Internet",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 110,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2017-03-30",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('vmName')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "VirtualMachine"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('vmName')]",
+          "adminUsername": "[parameters('sshAdmin')]",
+          "adminPassword": "[parameters('sshPassword')]"
+        },        
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOffer')]",
+            "sku": "[variables('ubuntuOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "[concat(parameters('vmName'),'_OSDisk')]",
+            "caching": "ReadWrite",
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "[variables('diskStorageType')]"
+  
+            }
+          },
+          "dataDisks": [
+            {
+              "name": "[concat(parameters('vmName'), '-state')]",
+              "diskSizeGB": "10",
+              "lun": 0,
+              "createOption": "Empty"
+            }
+          ]
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(parameters('vmName'),'/config')]",
+      "apiVersion": "2018-06-01",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.0",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "commandToExecute": "[concat('mkfs -t ext4 /dev/sdc && mkdir /mnt/persistent && mount /dev/sdc /mnt/persistent', ' && UUID=$(blkid -s UUID -o value /dev/sdc) && echo \"',  'UUID=$UUID /mnt/persistent ext4 defaults,nofail 1 2 \"', ' >> /etc/fstab && apt-get -y update && apt-get -y install apt-transport-https ca-certificates curl software-properties-common && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && apt-key fingerprint 0EBFCD88 && add-apt-repository ', variables('singleQuote'), 'deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable', variables('singleQuote'), ' && apt-get update && apt-get install -y docker-ce && ', 'docker run --name lenses -p 80:', parameters('lensesPort'), ' -e ', variables('singleQuote'), 'LICENSE=', parameters('lensesLicense'), variables('singleQuote'), ' -e ', variables('singleQuote'), 'LENSES_KAFKA_BROKERS=', parameters('kafkaBrokers'), variables('singleQuote'),  ' -e ', variables('singleQuote'), 'LENSES_ZOOKEEPER_HOSTS=', parameters('zookeeper'), variables('singleQuote'), ' -e ', variables('singleQuote'), 'LENSES_SCHEMA_REGISTRY_URLS=', parameters('schemaRegistry'), variables('singleQuote'), ' -e ', variables('singleQuote'), 'LENSES_CONNECT_CLUSTERS=', parameters('connect'), variables('singleQuote'), ' -e LENSES_SECURITY_MODE=BASIC', ' -e ', variables('singleQuote'), 'LENSES_SECURITY_GROUPS=', string(variables('securityGroups')), variables('singleQuote'), ' -e ', variables('singleQuote'), 'LENSES_SECURITY_USERS=', string(variables('securityUsers')), variables('singleQuote'), ' --restart on-failure:10 -v /var/log/lenses:/data/log -v /mnt/persistent/kafka-streams-state:/data/kafka-streams-state -d landoop/lenses:2.1')]"
+                    
+        }
+      }
+    }
+  ]
+}
