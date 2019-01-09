@@ -1,9 +1,9 @@
 {
-    "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
-    "type": "QuickStart", 
-    "itemDisplayName": "Deploy Lenses as an archive",
-    "description": "This template allows you to deploy an Ubuntu VM (using the Custom Script Extension) and Lenses archive and configure it with HDInsight Apache Kafka or your own Apache Kafka.",
-    "summary": "Deploy Lenses as an archive",
-    "githubUsername": "spirosoik",
-    "dateUpdated": "2018-11-21"
-  }
+  "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
+  "type": "QuickStart",
+  "itemDisplayName": "Lenses",
+  "description": "This template deploys a linux VM with Lenses, using new or existing resources for the Virtual Network.  It also deploys a Data Disk for storing the state and it allows SSH authenticatation.",
+  "summary": "This template deploys a linux VM with Lenses, using new or existing resources for the Virtual Network.  It also deploys a Data Disk for storing the state and it allows SSH authenticatation.",
+  "githubUsername": "spirosoik",
+  "dateUpdated": "2018-12-12"
+}

@@ -117,11 +117,15 @@
     "singleQuote": "'",
     "securityGroups": [
       {"name": "adminGroup", "roles": ["admin", "write", "read"]},
-      {"name": "readGroup",  "roles": ["read"]}
+      {"name": "readGroup",  "roles": ["read"]},
+      {"name": "datapolicyreadGroup",  "roles": ["datapolicyread"]},
+      {"name": "datapolicywritegroup",  "roles": ["datapolicywrite"]}
     ],
     "securityUsers": [
       {"username": "admin", "password": "admin", "displayname": "Lenses Admin", "groups": ["adminGroup"]},
-      {"username": "read", "password": "read", "displayname": "Read Only", "groups": ["readGroup"]}
+      {"username": "read", "password": "read", "displayname": "Read Only", "groups": ["readGroup"]},
+      {"username": "datapolicyread", "password": "datapolicyread", "displayname": "datapolicyread", "groups": ["datapolicyreadGroup"]},
+      {"username": "datapolicywrite", "password": "datapolicywrite", "displayname": "datapolicywrite", "groups": ["datapolicywritegroup"]}
     ]
   },
   "resources": [
@@ -285,9 +289,9 @@
         "type": "CustomScript",
         "typeHandlerVersion": "2.0",
         "autoUpgradeMinorVersion": true,
-        "settings": {
-          "commandToExecute": "[concat('mkfs -t ext4 /dev/sdc && mkdir /mnt/persistent && mount /dev/sdc /mnt/persistent', ' && UUID=$(blkid -s UUID -o value /dev/sdc) && echo \"',  'UUID=$UUID /mnt/persistent ext4 defaults,nofail 1 2 \"', ' >> /etc/fstab && apt-get -y update && apt-get -y install apt-transport-https ca-certificates curl software-properties-common && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && apt-key fingerprint 0EBFCD88 && add-apt-repository ', variables('singleQuote'), 'deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable', variables('singleQuote'), ' && apt-get update && apt-get install -y docker-ce && ', 'docker run --name lenses -p 80:', parameters('lensesPort'), ' -e ', variables('singleQuote'), 'LICENSE=', parameters('lensesLicense'), variables('singleQuote'), ' -e ', variables('singleQuote'), 'LENSES_KAFKA_BROKERS=', parameters('kafkaBrokers'), variables('singleQuote'),  ' -e ', variables('singleQuote'), 'LENSES_ZOOKEEPER_HOSTS=', parameters('zookeeper'), variables('singleQuote'), ' -e ', variables('singleQuote'), 'LENSES_SCHEMA_REGISTRY_URLS=', parameters('schemaRegistry'), variables('singleQuote'), ' -e ', variables('singleQuote'), 'LENSES_CONNECT_CLUSTERS=', parameters('connect'), variables('singleQuote'), ' -e LENSES_SECURITY_MODE=BASIC', ' -e ', variables('singleQuote'), 'LENSES_SECURITY_GROUPS=', string(variables('securityGroups')), variables('singleQuote'), ' -e ', variables('singleQuote'), 'LENSES_SECURITY_USERS=', string(variables('securityUsers')), variables('singleQuote'), ' --restart on-failure:10 -v /var/log/lenses:/data/log -v /mnt/persistent/kafka-streams-state:/data/kafka-streams-state -d landoop/lenses:2.1')]"
-                    
+        "protectedSettings": {
+          "fileUris": ["https://archive.landoop.com/repository/cloud/azure/docker/configure.sh"],
+          "commandToExecute": "[concat('./configure.sh -l ', variables('singleQuote'), parameters('lensesLicense'), variables('singleQuote'), ' -b ', variables('singleQuote'), parameters('kafkaBrokers'), variables('singleQuote'), ' -z ', variables('singleQuote'), parameters('zookeeper'), variables('singleQuote'), ' -s ', variables('singleQuote'), parameters('schemaRegistry'), variables('singleQuote'), ' -c ', variables('singleQuote'), parameters('connect'), variables('singleQuote'))]" 
         }
       }
     }

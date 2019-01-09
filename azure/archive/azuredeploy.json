@@ -22,17 +22,28 @@
         "description": "Size of the VM"
       }
     },
+    "authenticationType": {
+      "type": "string",
+      "defaultValue": "password",
+      "allowedValues": [
+        "password",
+        "sshPublicKey"
+      ],
+      "metadata": {
+        "description": "Type of authentication to use on the Virtual Machine."
+      }
+    },
     "sshAdmin": {
       "type": "string",
       "defaultValue": "ubuntu",
       "metadata": {
-        "description": "Size of the VM"
+        "description": "Admin Username"
       }
     },
     "sshPassword": {
       "type": "securestring",
       "metadata": {
-        "description": "Size of the VM"
+        "description": "SSH Password or Key"
       }
     },
     "existingVirtualNetworkName": {
@@ -65,13 +76,6 @@
       "type": "securestring",
       "metadata": {
         "description": "Your own license for Lenses. Please download it here https://www.landoop.com/downloads/"
-      }
-    },
-    "lensesPort": {
-      "type": "string",
-      "defaultValue": "9991",
-      "metadata": {
-        "description": "The port which Lenses will use to run (Required)"
       }
     },
     "kafkaBrokers": {
@@ -110,30 +114,22 @@
     "nicName": "[concat(parameters('vmName'), '-nic1')]",
     "nsgName": "[concat(parameters('vmName'), '-secgroup')]",
     "nsgID": "[resourceId('Microsoft.Network/networkSecurityGroups',variables('nsgName'))]",
+    "linuxConfiguration": {
+      "disablePasswordAuthentication": true,
+      "ssh": {
+        "publicKeys": [
+          {
+            "path": "[concat('/home/', parameters('sshAdmin'), '/.ssh/authorized_keys')]",
+            "keyData": "[parameters('sshPassword')]"
+          }
+        ]
+      }
+    },
     "publicIPAddressName": "[concat(parameters('vmName'), '-pip')]",
     "imagePublisher": "Canonical",
     "imageOffer": "UbuntuServer",
     "ubuntuOSVersion": "18.04-LTS",
-    "singleQuote": "'",
-    "securityGroups": [
-      {"name": "adminGroup", "roles": ["admin", "write", "read"]},
-      {"name": "readGroup",  "roles": ["read"]}
-    ],
-    "securityUsers": [
-      {"username": "admin", "password": "admin", "displayname": "Lenses Admin", "groups": ["adminGroup"]},
-      {"username": "read", "password": "read", "displayname": "Read Only", "groups": ["readGroup"]}
-    ],
-    "lensesPortConf": "[concat('lenses.port', '=', parameters('lensesPort'))]",
-    "lensesBrokersConf": "[concat('lenses.kafka.brokers', '=', variables('singleQuote'), '\"', parameters('kafkaBrokers'), '\"' ,variables('singleQuote') )]",
-    "lensesZookeperConf": "[concat('lenses.zookeeper.hosts', '=', variables('singleQuote'), if(equals(parameters('zookeeper'), ''), '[]', parameters('zookeeper')), variables('singleQuote'))]",
-    "lensesSchemaRegistry": "[concat('lenses.schema.registry.urls', '=', variables('singleQuote'), if(equals(parameters('schemaRegistry'), ''), '[]', parameters('schemaRegistry')), variables('singleQuote'))]",
-    "lensesConnect": "[concat('lenses.connect.clusters', '=', variables('singleQuote'),  if(equals(parameters('connect'), ''), '[]', parameters('connect')), variables('singleQuote'))]",
-    "lensesSqlStateConf": "[concat('lenses.sql.state.dir=', '=', 'kafka-streams-state')]",
-    "lensesSecretFile": "[concat('lenses.secret.file', '=', 'security.conf')]",
-    "lensesLicense": "[concat('lenses.license.file', '=', 'license.json')]",
-    "lensesSecGroup": "[concat('lenses.security.groups', '=', string(variables('securityGroups')))]",
-    "lensesSecUsers": "[concat('lenses.security.users', '=', string(variables('securityUsers')))]",
-    "lensesSecMode": "lenses.security.mode=BASIC"
+    "singleQuote": "'"
   },
   "resources": [
     {
@@ -247,7 +243,8 @@
         "osProfile": {
           "computerName": "[parameters('vmName')]",
           "adminUsername": "[parameters('sshAdmin')]",
-          "adminPassword": "[parameters('sshPassword')]"
+          "adminPassword": "[parameters('sshPassword')]",
+          "linuxConfiguration": "[if(equals(parameters('authenticationType'), 'password'), json('null'), variables('linuxConfiguration'))]"
         },        
         "storageProfile": {
           "imageReference": {
@@ -297,8 +294,8 @@
         "typeHandlerVersion": "2.0",
         "autoUpgradeMinorVersion": true,
         "protectedSettings": {
-          "fileUris": ["https://archive.landoop.com/lenses/2.1/lenses-2.1.11-linux64.tar.gz"],
-          "commandToExecute": "[concat('mkfs -t ext4 /dev/sdc && mkdir /mnt/persistent && mount /dev/sdc /mnt/persistent', ' && UUID=$(blkid -s UUID -o value /dev/sdc) && echo \"',  'UUID=$UUID /mnt/persistent ext4 defaults,nofail 1 2 \"', ' >> /etc/fstab && apt-get -y update && cp lenses-2.1.11-linux64.tar.gz /mnt/persistent/ && cd /mnt/persistent && tar xvzf lenses-2.1.11-linux64.tar.gz && chmod -R 0755 lenses', ' && cd lenses && ', 'mv lenses.conf.sample lenses.conf && cat /dev/null > lenses.conf && mv security.conf.sample security.conf && cat /dev/null > security.conf && ', ' echo ', variables('lensesPortConf'), ' >> lenses.conf', ' && echo ', variables('lensesBrokersConf'), ' >> lenses.conf', ' && echo ', string(variables('lensesZookeperConf')), ' >> lenses.conf', ' && echo ', string(variables('lensesSchemaRegistry')), ' >> lenses.conf', ' && echo ', string(variables('lensesConnect')), ' >> lenses.conf', ' && echo ', variables('lensesSecMode'), ' >> security.conf', ' && echo ', variables('singleQuote'), variables('lensesSecGroup'), variables('singleQuote'), ' >> security.conf', ' && echo ', variables('singleQuote'), variables('lensesSecUsers'), variables('singleQuote'), ' >> security.conf', ' && echo ', variables('singleQuote'), parameters('lensesLicense'), variables('singleQuote'), ' >> license.json && ./bin/lenses &')]" 
+          "fileUris": ["https://archive.landoop.com/repository/cloud/azure/vm/configure.sh"],
+          "commandToExecute": "[concat('-l ', variables('singleQuote'), parameters('lensesLicense'), variables('singleQuote'), ' -z ', parameters('zookeeper'), ' -s ', variables('singleQuote'), ' -b ', parameters('kafkaBrokers'), ' -s ', variables('singleQuote'), parameters('schemaRegistry'), variables('singleQuote'), ' -c ', variables('singleQuote'), parameters('connect'), variables('singleQuote'))]"
         }
       }
     }
