@@ -3,7 +3,7 @@
 This repo contains all currently available templates which you can use to deploy Lenses in different cloud providers. Current list of templates:
 
 - [Azure](azure/)
-- [AWS][aws/]
+- [AWS](aws/)
 - GCE (coming soon)
 
 All the templates require the followings:
