@@ -4,6 +4,6 @@
   "itemDisplayName": "Lenses",
   "description": "This template deploys a linux VM with Docker pre-installed and Lenses as a docker container, using new or existing resources for the Virtual Network.  It also deploys a Data Disk for storing the state and it allows SSH authenticatation.",
   "summary": "This template deploys a linux VM with Docker pre-installed and Lenses as a docker container, using new or existing resources for the Virtual Network.",
-  "githubUsername": "spirosoik",
+  "githubUsername": "landoop",
   "dateUpdated": "2018-12-12"
 }
