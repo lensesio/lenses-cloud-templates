@@ -1,0 +1,396 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy Lenses on AWS Fargate, hosted in any subnet you prefer with a load balancer.
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - VPC
+          - Subnets
+      - Label:
+          default: Elastic Container Service
+        Parameters:
+          - ClusterName
+          - ServiceName
+          - ContainerCpu
+          - ContainerMemory
+          - DesiredCount
+      - Label:
+          default: Lenses
+        Parameters:
+          - LensesLicense
+          - LensesPort
+      - Label:
+          default: Kafka (autodiscover)
+        Parameters:
+          - AutoRegion
+          - AutoBroker
+          - AutoZookeeper
+          - AutoWorker
+      - Label:
+          default:  Kafka (manually)
+        Parameters:
+          - BrokerURLs
+          - ZookeeperURLs
+          - SchemaRegistryURLs
+          - ConnectURLs
+
+    ParameterLabels:
+      ClusterName:
+        default: ECS Cluster Name (required)
+      ServiceName:
+        default: The Container service name
+      ContainerCpu:
+        default: Container CPU
+      ContainerMemory:
+        default: Container Memory
+      Subnets:
+        default: VPC subnets
+      LensesLicense:
+        default: License (JSON)
+      LensesPort:
+        default: Port
+      AutoRegion:
+        default: Region of Kafka
+      AutoBroker:
+        default: Brokers (optional)
+      AutoZookeeper:
+        default: Zookeeper (optional)
+      AutoWorker:
+        default: Worker (optional)
+      BrokerURLs:
+        default: Broker URLs
+      ZookeeperURLs:
+        default: Zookeeper URLs
+      SchemaRegistryURLs:
+        default: Schema Registry URLs
+      ConnectURLs:
+        default: Connect JSON URLs
+Parameters:
+  VPC:
+    Description: The VPC that the ECS cluster is deployed to
+    Type: AWS::EC2::VPC::Id
+  
+  ClusterName:
+    AllowedPattern: '([A-Za-z]{1}[0-9A-Za-z_-]*)'
+    ConstraintDescription: The ClusterName value must be alphanumeric
+    Description: Provide the ECS Cluster ID that Lenses should run on
+    Type: String
+  
+  ServiceName:
+    Type: String
+    Default: Lenses
+    Description: The name of the ECS Service name.
+
+  ContainerCpu:
+    Type: Number
+    Default: 2048
+    Description: How much CPU to give the container. Prefer >= 2G
+  
+  ContainerMemory:
+    Type: Number
+    Default: 5120
+    Description: How much memory in megabytes to give the container. Prefer >= 4g.
+  
+  Subnets:
+    Description: Choose which subnets the Application Load Balancer should be deployed to
+    Type: List<AWS::EC2::Subnet::Id>
+
+  LensesLicense:
+    Description: You can get a license here https://www.landoop.com/downloads/. Please use the JSON file here.
+    Type: String
+    NoEcho: "true"
+  
+  LensesPort:
+    Type: Number
+    Default: 9991
+    Description: The port which Lenses will use to start. Default is 9991
+  
+  AutoRegion:
+    Type: String
+    Default: eu-west-1
+    Description: The region where your Apache Kafka is deployed.
+
+  AutoBroker:
+    Type: String
+    Default: broker
+    Description: The Tag Name you used for your brokers. Default value is broker
+
+  AutoZookeeper:
+    Type: String
+    Default: zookeeper
+    Description: Tag Name you used for your Zookeeper. Default value is zookeeper
+
+  AutoWorker:
+    Type: String
+    Default: worker
+    Description: Tag Name you used for your Workers (Connect, Schema Registry). Default value is worker
+
+  BrokerURLs:
+    Description: >-
+      Apache Kafka Broker URLs (comma-separated list) eg. PLAINTEXT://broker.1.url:9092,PLAINTEXT://broker.2.url:9092. Ignore it if you use Broker EC2 instances
+    Type: String
+
+  ZookeeperURLs:
+    Type: String
+    Description: >-
+      Zookeeper URLs (comma-separated list) eg. http://zookeeper.1.url,http://zookeeper.2.url. Ignore it if you use Zookeper EC2 instances
+
+  SchemaRegistryURLs:
+    Type: String
+    Description: >-
+      Schema registry URLs (comma-separated list) eg. http://schema.registry.2.url,http://schema.registry.2.url. Ignore it if you use Schema Registry EC2 instances
+
+  ConnectURLs:
+    Description: >-
+      Connect URLs (comma-separated list)  eg. http://connect.2.url,http://connect.2.url. Ignore it if you use Connect EC2 instances
+    Type: String
+
+Rules:
+  Subnets:
+    Assertions:
+      - Assert:
+          'Fn::EachMemberIn':
+            - 'Fn::ValueOfAll':
+                - 'AWS::EC2::Subnet::Id'
+                - VpcId
+            - 'Fn::RefAll': 'AWS::EC2::VPC::Id'
+        AssertDescription: All subnets must in the VPC
+
+Resources:
+  FargateContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the Fargate containers
+      VpcId: !Ref 'VPC'
+
+  EcsSecurityGroupIngressFromPublicALB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from the public ALB
+      GroupId: !Ref 'FargateContainerSecurityGroup'
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref 'PublicLoadBalancerSG'
+
+  # ECS Service to run the Task definition
+  Service: 
+    Type: AWS::ECS::Service
+    DependsOn: LoadBalancerRule
+    Properties: 
+      ServiceName: !Ref ServiceName
+      Cluster: !Ref ClusterName
+      LaunchType: FARGATE
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 75
+      HealthCheckGracePeriodSeconds: 60
+      DesiredCount: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref 'FargateContainerSecurityGroup'
+          Subnets: !Ref Subnets
+      TaskDefinition: !Ref TaskDefinition
+      LoadBalancers: 
+        - ContainerName: "lenses"
+          ContainerPort: !Ref LensesPort
+          TargetGroupArn: !Ref TargetGroup
+
+  # Service Task definition to run lenses
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: Lenses
+      Cpu: !Ref 'ContainerCpu'
+      Memory: !Ref 'ContainerMemory'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      TaskRoleArn: !Ref TaskRole
+      ExecutionRoleArn: !Ref TaskExecutionRole 
+      ContainerDefinitions:
+        - Name: lenses
+          Essential: true
+          Image: landoop/lenses:2.2
+          Cpu: !Ref 'ContainerCpu'
+          Memory: !Ref 'ContainerMemory'
+          Environment: 
+            - Name: LICENSE
+              Value: !Ref LensesLicense
+            - Name: LENSES_PORT
+              Value: !Ref LensesPort
+            - Name: LENSES_KAFKA_BROKERS
+              Value: !Ref BrokerURLs
+            - Name: LENSES_ZOOKEEPER_HOSTS
+              Value: !Ref ZookeeperURLs
+            - Name: LENSES_SCHEMA_REGISTRY_URLS
+              Value: !Ref SchemaRegistryURLs
+            - Name: LENSES_CONNECT_CLUSTERS
+              Value: !Ref ConnectURLs
+            - Name: LENSES_SECURITY_MODE
+              Value: BASIC
+            - Name: LENSES_SECURITY_GROUPS
+              Value: |
+                [
+                  {"name": "adminGroup", "roles": ["admin", "write", "read"]},
+                  {"name": "readGroup",  "roles": ["read"]},
+                  {"name": "datapolicyreadGroup",  "roles": ["datapolicyread"]},
+                  {"name": "datapolicywritegroup",  "roles": ["datapolicywrite"]}
+                ]
+            - Name: LENSES_SECURITY_USERS
+              Value: |
+                [
+                  {"username": "admin", "password": "admin", "displayname": "Lenses Admin", "groups": ["adminGroup", "datapolicywritegroup"]},
+                  {"username": "read", "password": "read", "displayname": "Read Only", "groups": ["readGroup"]},
+                  {"username": "datapolicyread", "password": "datapolicyread", "displayname": "datapolicyread", "groups": ["datapolicyreadGroup"]},
+                  {"username": "datapolicywrite", "password": "datapolicywrite", "displayname": "datapolicywrite", "groups": ["datapolicywritegroup"]}
+                ]
+            - Name: SD_CONFIG
+              Value: !Sub 'provider=aws region=${AutoRegion} addr_type=public_v4'
+            - Name: SD_BROKER_FILTER
+              Value: !Sub tag_key=Name tag_value=*${AutoBroker}*
+            - Name: SD_ZOOKEEPER_FILTER
+              Value: !Sub tag_key=Name tag_value=*${AutoZookeeper}*
+            - Name: SD_REGISTRY_FILTER
+              Value: !Sub tag_key=Name tag_value=*${AutoWorker}*
+            - Name: SD_CONNECT_FILTERS
+              Value: !Sub tag_key=Name tag_value=*${AutoWorker}*
+
+          PortMappings:
+            - ContainerPort: !Ref LensesPort
+              HostPort: !Ref LensesPort
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+                awslogs-region: !Ref AWS::Region
+                awslogs-group: !Ref AWS::StackName
+                awslogs-stream-prefix: lenses-stream
+  
+  # Gather Logs from Cloudwatch with the stack group name
+  CloudWatchLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties: 
+        LogGroupName: !Ref AWS::StackName
+  
+  # Load Balancer
+  PublicLoadBalancerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the public facing load balancer
+      VpcId: !Ref 'VPC'
+      SecurityGroupIngress:
+          # Allow access to ALB from anywhere on the internet
+          - CidrIp: 0.0.0.0/0
+            IpProtocol: -1
+
+  LoadBalancer:
+      Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+      Properties:
+        Name: !Sub Lenses-${AWS::StackName}
+        Subnets: !Ref Subnets
+        SecurityGroups: 
+            - !Ref PublicLoadBalancerSG
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP 
+      DefaultActions: 
+          - Type: forward
+            TargetGroupArn: !Ref TargetGroup
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+        VpcId: !Ref VPC
+        Port: !Ref LensesPort
+        Protocol: HTTP
+        HealthCheckIntervalSeconds: 60
+        HealthCheckPath: /
+        HealthCheckProtocol: HTTP
+        HealthCheckTimeoutSeconds: 40
+        HealthyThresholdCount: 2
+        UnhealthyThresholdCount: 2
+        TargetType: ip
+  
+  LoadBalancerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListener
+      Priority: 1
+      Conditions:
+          - Field: path-pattern
+            Values: 
+              - "*"
+      Actions:
+          - TargetGroupArn: !Ref TargetGroup
+            Type: forward
+  
+  # Role for sending logs in Cloudwatch 
+  TaskExecutionRole: 
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub lenses-task-execution-${AWS::StackName}
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: ECSTaskExecutionRolePolicy
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                - 'logs:CreateLogStream'
+                - 'logs:PutLogEvents'
+              Resource: '*'
+  
+  # Role for autodiscover instances about Kafka etc.
+  TaskRole: 
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub lenses-task-role-${AWS::StackName}
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: ECSTaskExecutionRolePolicy
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                # Rules which allow ECS to attach network interfaces to instances
+                # on your behalf in order for awsvpc networking mode to work right
+                - 'ec2:AttachNetworkInterface'
+                - 'ec2:CreateNetworkInterface'
+                - 'ec2:CreateNetworkInterfacePermission'
+                - 'ec2:DeleteNetworkInterface'
+                - 'ec2:DeleteNetworkInterfacePermission'
+                - 'ec2:Describe*'
+                - 'ec2:DetachNetworkInterface'
+
+                # Rules which allow ECS to update load balancers on your behalf
+                # with the information about how to send traffic to your containers
+                - 'elasticloadbalancing:DeregisterInstancesFromLoadBalancer'
+                - 'elasticloadbalancing:DeregisterTargets'
+                - 'elasticloadbalancing:Describe*'
+                - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
+                - 'elasticloadbalancing:RegisterTargets'
+              Resource: '*'
+
+Outputs:
+  FQDN:
+    Description: "FQDN for Elastic Load Balancer"
+    Value: !GetAtt LoadBalancer.DNSName
