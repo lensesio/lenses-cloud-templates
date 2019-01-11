@@ -24,7 +24,7 @@ Metadata:
           - AutoZookeeper
           - AutoWorker
       - Label:
-          default:  Kafka (manually)
+          default: Kafka (manually)
         Parameters:
           - BrokerURLs
           - ZookeeperURLs
@@ -45,13 +45,13 @@ Metadata:
       AutoWorker:
         default: Worker (optional)
       BrokerURLs:
-        default: Broker URLs
+        default: Kafka Brokers
       ZookeeperURLs:
-        default: Zookeeper URLs
+        default: Zookeeper JSON (optional)
       SchemaRegistryURLs:
-        default: Schema Registry URLs
+        default: Schema Registry JSON
       ConnectURLs:
-        default: Connect JSON URLs   
+        default: Connect JSON   
       SubnetId:
         default: Subnet ID of VPC   
 Parameters:
@@ -70,7 +70,7 @@ Parameters:
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
 
   VPC:
-    Description: The VPC that the ECS cluster is deployed to
+    Description: The VPC that the EC2 will be deployed to
     Type: AWS::EC2::VPC::Id
   
   SubnetId:
@@ -90,6 +90,32 @@ Parameters:
     - t3.medium
     - t3.large
     - t3.xlarge
+    - m4.large
+    - m4.xlarge
+    - m4.2xlarge
+    - m4.4xlarge
+    - m4.10xlarge
+    - m4.16xlarge
+    - m5.large
+    - m5.xlarge
+    - m5.2xlarge
+    - m5.4xlarge
+    - c4.large
+    - c4.xlarge
+    - c4.2xlarge
+    - c4.4xlarge
+    - c4.8xlarge
+    - c5.large
+    - c5.xlarge
+    - c5.2xlarge
+    - c5.4xlarge
+    - c5.9xlarge
+    - r4.large
+    - r4.xlarge
+    - r4.2xlarge
+    - r4.4xlarge
+    - r4.8xlarge
+    - r4.16xlarge
     Description: Lenses EC2 instance type
       
   LensesLicense:
@@ -124,22 +150,22 @@ Parameters:
  
   BrokerURLs:
     Description: >-
-      Apache Kafka Broker URLs (comma-separated list) eg. PLAINTEXT://broker.1.url:9092,PLAINTEXT://broker.2.url:9092. Ignore it if you use Broker EC2 instances
+      Kafka Brokers (comma-separated list) eg. PLAINTEXT://broker.1.url:9092,PLAINTEXT://broker.2.url:9092
     Type: String
 
   ZookeeperURLs:
     Type: String
     Description: >-
-      Zookeeper URLs (comma-separated list) eg. http://zookeeper.1.url,http://zookeeper.2.url. Ignore it if you use Zookeper EC2 instances
+      Zookeeper JSON. Check documentation https://docs.lenses.io/install_setup/configuration/lenses-config.html
 
   SchemaRegistryURLs:
     Type: String
     Description: >-
-      Schema registry URLs (comma-separated list) eg. http://schema.registry.2.url,http://schema.registry.2.url. Ignore it if you use Schema Registry EC2 instances
+      Schema registry JSON. Check documentation https://docs.lenses.io/install_setup/configuration/lenses-config.html
 
   ConnectURLs:
     Description: >-
-      Connect URLs (comma-separated list)  eg. http://connect.2.url,http://connect.2.url. Ignore it if you use Connect EC2 instances
+      Connect JSON. https://docs.lenses.io/install_setup/configuration/lenses-config.html
     Type: String
 
 Mappings:
@@ -224,8 +250,8 @@ Resources:
             cat << EOF > /mnt/persistent/lenses/lenses.env
             LENSES_PORT=${LensesPort}
             LENSES_SECURITY_MODE=BASIC
-            LENSES_SECURITY_GROUPS=[{"name": "adminGroup", "roles": ["admin", "write", "read"]},{"name": "readGroup",  "roles": ["read"]}]
-            LENSES_SECURITY_USERS=[{"username": "admin", "password": "admin", "displayname": "Lenses Admin", "groups": ["adminGroup"]},{"username": "read", "password": "read", "displayname": "Read Only", "groups": ["readGroup"]}]
+            LENSES_SECURITY_GROUPS=[{"name": "adminGroup", "roles": ["admin", "write", "read"]},{"name": "readGroup",  "roles": ["read"]},{"name": "datapolicyreadGroup",  "roles": ["datapolicyread"]},{"name": "datapolicywritegroup",  "roles": ["datapolicywrite"]}]
+            LENSES_SECURITY_USERS=[{"username": "admin", "password": "admin", "displayname": "Lenses Admin", "groups": ["adminGroup", "datapolicywritegroup"]},{"username": "read", "password": "read", "displayname": "Read Only", "groups": ["readGroup"]},{"username": "datapolicyread", "password": "datapolicyread", "displayname": "datapolicyread", "groups": ["datapolicyreadGroup"]},{"username": "datapolicywrite", "password": "datapolicywrite", "displayname": "datapolicywrite", "groups": ["datapolicywritegroup"]}]
             LICENSE=${LensesLicense}
             LENSES_KAFKA_BROKERS=${BrokerURLs}
             LENSES_ZOOKEEPER_HOSTS=${ZookeeperURLs}
@@ -239,8 +265,12 @@ Resources:
             SD_CONNECT_FILTERS=tag_key=Name tag_value=*${AutoWorker}*
             EOF
             
-            docker run --name=lenses --env-file=/mnt/persistent/lenses/lenses.env -p 80:${LensesPort} -v /var/log/lenses:/data/log -v /mnt/persistent/kafka-streams-state:/data/kafka-streams-state -d landoop/lenses
-            
+            docker run --name=lenses  -p 80:${LensesPort} \
+            -v /var/log/lenses:/data/log \
+            -v /mnt/persistent/kafka-streams-state:/data/kafka-streams-state \
+            -v /mnt/persistent/storage:/data/storage \
+            landoop/lenses:2.2
+
             mkdir /tmp/cwlogs
             cat << EOF > /tmp/cwlogs/lenses.conf
             [general]
@@ -273,6 +303,7 @@ Resources:
       Type: "AWS::EC2::SecurityGroup"
       Properties:
         GroupDescription : "Enable HTTP and SSH access For Lenses"
+        VpcId: !Ref VPC
         SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: '22'
@@ -289,12 +320,12 @@ Resources:
       Path: /
       Roles:
         - !Ref EC2Role
-      InstanceProfileName: "lenses-ec2-iam-profile"
+      InstanceProfileName: !Sub ec2-iam-profile-${AWS::StackName}
 
   EC2Role: 
     Type: AWS::IAM::Role
     Properties:
-      RoleName: EC2-Lenses
+      RoleName: !Sub EC2-${AWS::StackName}
       AssumeRolePolicyDocument:
         Statement:
         - Effect: Allow
@@ -308,10 +339,13 @@ Resources:
             Statement:
             - Effect: Allow
               Action:
-                # Lenses auto discover
-                - "ec2:DescribeInstances"
-                # Allow the ECS tasks to upload logs to CloudWatch
                 - 'logs:CreateLogGroup'
                 - 'logs:CreateLogStream'
                 - 'logs:PutLogEvents'
+                - 'ec2:Describe*'
               Resource: '*'
+
+Outputs:
+  FQDN:
+    Description: "FQDN for EC2 instance"
+    Value: !GetAtt Lenses.PublicDnsName

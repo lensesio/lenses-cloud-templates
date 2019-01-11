@@ -75,6 +75,32 @@ Parameters:
     - t3.medium
     - t3.large
     - t3.xlarge
+    - m4.large
+    - m4.xlarge
+    - m4.2xlarge
+    - m4.4xlarge
+    - m4.10xlarge
+    - m4.16xlarge
+    - m5.large
+    - m5.xlarge
+    - m5.2xlarge
+    - m5.4xlarge
+    - c4.large
+    - c4.xlarge
+    - c4.2xlarge
+    - c4.4xlarge
+    - c4.8xlarge
+    - c5.large
+    - c5.xlarge
+    - c5.2xlarge
+    - c5.4xlarge
+    - c5.9xlarge
+    - r4.large
+    - r4.xlarge
+    - r4.2xlarge
+    - r4.4xlarge
+    - r4.8xlarge
+    - r4.16xlarge
     Description: Lenses EC2 instance type
       
   LensesLicense:
@@ -172,36 +198,38 @@ Resources:
             apt-get -y install python
 
             curl https://archive.landoop.com/lenses/2.2/lenses-2.2.3-linux64.tar.gz -O
-            cp lenses-2.2.3-linux64.tar.gz /mnt/persistent
-            cd /mnt/persistent
+            cp lenses-2.2.3-linux64.tar.gz /mnt
+            cd /mnt
             tar xvzf lenses-2.2.3-linux64.tar.gz
             chmod -R 0755 lenses
+            rm -f lenses-2.2.3-linux64.tar.gz
 
             # Setup Lenses conf
-            cat << EOF > /mnt/persistent/lenses/lenses.conf
+            cat << EOF > /mnt/lenses/lenses.conf
             lenses.port=${LensesPort}
 
             lenses.kafka.brokers="${BrokerURLs}"
             
             lenses.secret.file=security.conf
-            lenses.sql.state.dir="kafka-streams-state"
+            lenses.sql.state.dir="/mnt/persistent/kafka-streams-state"
+            lenses.storage.directory="/mnt/persistent/storage"
             lenses.license.file=license.json
             EOF
 
             if [ ! -z "${ZookeeperURLs}" ]; then
-              echo lenses.zookeeper.hosts='${ZookeeperURLs}' >> /mnt/persistent/lenses/lenses.conf
+              echo lenses.zookeeper.hosts='${ZookeeperURLs}' >> /mnt/lenses/lenses.conf
             fi
 
             if [ ! -z "${SchemaRegistryURLs}" ]; then
-              echo lenses.schema.registry.urls='${SchemaRegistryURLs}' >> /mnt/persistent/lenses/lenses.conf
+              echo lenses.schema.registry.urls='${SchemaRegistryURLs}' >> /mnt/lenses/lenses.conf
             fi
 
             if [ ! -z "${ConnectURLs}" ]; then
-              echo lenses.connect.clusters='${ConnectURLs}' >> /mnt/persistent/lenses/lenses.conf
+              echo lenses.connect.clusters='${ConnectURLs}' >> /mnt/lenses/lenses.conf
             fi
 
             # Setup Security conf
-            cat << EOF > /mnt/persistent/lenses/security.conf
+            cat << EOF > /mnt/lenses/security.conf
             lenses.security.mode=BASIC
             lenses.security.users=[
               {"username": "admin", "password": "admin", "displayname": "Lenses Admin", "groups": ["adminGroup", "datapolicywritegroup"]},
@@ -218,7 +246,7 @@ Resources:
             ]
             EOF
 
-            cat << EOF > /mnt/persistent/lenses/license.json
+            cat << EOF > /mnt/lenses/license.json
             ${LensesLicense}
             EOF
             
@@ -230,18 +258,18 @@ Resources:
             cat << EOF > /tmp/cwlogs/lenses.conf
             [general]
             state_file= /var/awslogs/agent-state
-            [/mnt/persistent/lenses/logs/lenses]
-            file = /mnt/persistent/lenses/logs/lenses.log
+            [/mnt/lenses/logs/lenses]
+            file = /mnt/lenses/logs/lenses.log
             log_group_name = ${CloudWatchLogsGroup}
             log_stream_name = {instance_id}/lenses.log
 
-            [/mnt/persistent/lenses/logs/lenses-warn]
-            file = /mnt/persistent/lenses/logs/lenses-warn.log
+            [/mnt/lenses/logs/lenses-warn]
+            file = /mnt/lenses/logs/lenses-warn.log
             log_group_name = ${CloudWatchLogsGroup}
             log_stream_name = {instance_id}/lenses-warn.log
 
-            [/mnt/persistent/lenses/logs/lenses-metrics]
-            file = /mnt/persistent/lenses/logs/metrics.log
+            [/mnt/lenses/logs/lenses-metrics]
+            file = /mnt/lenses/logs/metrics.log
             log_group_name = ${CloudWatchLogsGroup}
             log_stream_name = {instance_id}/lenses-metrics.log
             EOF
