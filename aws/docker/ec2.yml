@@ -265,7 +265,8 @@ Resources:
             SD_CONNECT_FILTERS=tag_key=Name tag_value=*${AutoWorker}*
             EOF
             
-            docker run --name=lenses  -p 80:${LensesPort} \
+            docker run --name=lenses -p 80:${LensesPort} \
+            --env-file /mnt/persistent/lenses/lenses.env \
             -v /var/log/lenses:/data/log \
             -v /mnt/persistent/kafka-streams-state:/data/kafka-streams-state \
             -v /mnt/persistent/storage:/data/storage \
