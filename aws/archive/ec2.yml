@@ -197,12 +197,12 @@ Resources:
             apt-get -y update
             apt-get -y install python
 
-            curl https://archive.landoop.com/lenses/2.2/lenses-2.2.3-linux64.tar.gz -O
-            cp lenses-2.2.3-linux64.tar.gz /mnt
+            curl https://archive.landoop.com/lenses/2.2/lenses-2.2.4-linux64.tar.gz -O
+            cp lenses-2.2.4-linux64.tar.gz /mnt
             cd /mnt
-            tar xvzf lenses-2.2.3-linux64.tar.gz
+            tar xvzf lenses-2.2.4-linux64.tar.gz
             chmod -R 0755 lenses
-            rm -f lenses-2.2.3-linux64.tar.gz
+            rm -f lenses-2.2.4-linux64.tar.gz
 
             # Setup Lenses conf
             cat << EOF > /mnt/lenses/lenses.conf
