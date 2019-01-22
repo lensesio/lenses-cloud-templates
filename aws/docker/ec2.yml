@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Deploy Lenses on AWS Fargate, hosted in a private subnet, but accessible via a public load balancer.
+Description: Deploy Lenses on AWS EC2 instance with Docker.
 Metadata:
   'AWS::CloudFormation::Interface':
     ParameterGroups:
@@ -16,6 +16,7 @@ Metadata:
           - SSHLocation
           - LensesLicense
           - LensesPort
+          - LensesLocation
       - Label:
           default: Kafka (autodiscover)
         Parameters:
@@ -62,6 +63,15 @@ Parameters:
 
   SSHLocation:
     Description: The IP address range that can be used to SSH to the EC2 instances
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+  LensesLocation:
+    Description: The IP address range that can be used to access to Lenses
     Type: String
     MinLength: '9'
     MaxLength: '18'
@@ -224,75 +234,20 @@ Resources:
             #!/bin/bash
             set -o errexit
 
-            mkfs -t ext4 /dev/xvdf
-            mkdir -p /mnt/persistent 
-            mount /dev/xvdf /mnt/persistent
-            echo "/dev/xvdf /mnt/persistent ext4 defaults,relatime,nofail 0 2" >> /etc/fstab
-
-            apt-get -y update
-            apt-get -y install \
-              apt-transport-https \
-              ca-certificates \
-              curl \
-              software-properties-common
+            curl https://archive.landoop.com/repository/cloud/aws/docker/configure.sh -O
+            chmod +x configure.sh
             
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-            apt-key fingerprint 0EBFCD88
-            add-apt-repository \
-              "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-              $(lsb_release -cs) \
-              stable" 
-
-            apt-get -y update
-            apt-get -y install docker-ce python
-            mkdir -p /mnt/persistent/lenses/
-
-            cat << EOF > /mnt/persistent/lenses/lenses.env
-            LENSES_PORT=${LensesPort}
-            LENSES_SECURITY_MODE=BASIC
-            LENSES_SECURITY_GROUPS=[{"name": "adminGroup", "roles": ["admin", "write", "read"]},{"name": "readGroup",  "roles": ["read"]},{"name": "datapolicyreadGroup",  "roles": ["datapolicyread"]},{"name": "datapolicywritegroup",  "roles": ["datapolicywrite"]}]
-            LENSES_SECURITY_USERS=[{"username": "admin", "password": "admin", "displayname": "Lenses Admin", "groups": ["adminGroup", "datapolicywritegroup"]},{"username": "read", "password": "read", "displayname": "Read Only", "groups": ["readGroup"]},{"username": "datapolicyread", "password": "datapolicyread", "displayname": "datapolicyread", "groups": ["datapolicyreadGroup"]},{"username": "datapolicywrite", "password": "datapolicywrite", "displayname": "datapolicywrite", "groups": ["datapolicywritegroup"]}]
-            LICENSE=${LensesLicense}
-            LENSES_KAFKA_BROKERS=${BrokerURLs}
-            LENSES_ZOOKEEPER_HOSTS=${ZookeeperURLs}
-            LENSES_SCHEMA_REGISTRY_URLS=${SchemaRegistryURLs}
-            LENSES_CONNECT_CLUSTERS=${ConnectURLs}
-
-            SD_CONFIG=provider=aws region=${AutoRegion} addr_type=public_v4
-            SD_BROKER_FILTER=tag_key=Name tag_value=*${AutoBroker}*
-            SD_ZOOKEEPER_FILTER=tag_key=Name tag_value=*${AutoZookeeper}*
-            SD_REGISTRY_FILTER=tag_key=Name tag_value=*${AutoWorker}*
-            SD_CONNECT_FILTERS=tag_key=Name tag_value=*${AutoWorker}*
-            EOF
-            
-            docker run --name=lenses -p 80:${LensesPort} \
-            --env-file /mnt/persistent/lenses/lenses.env \
-            -v /var/log/lenses:/data/log \
-            -v /mnt/persistent/kafka-streams-state:/data/kafka-streams-state \
-            -v /mnt/persistent/storage:/data/storage \
-            landoop/lenses:2.2
-
-            mkdir /tmp/cwlogs
-            cat << EOF > /tmp/cwlogs/lenses.conf
-            [general]
-            state_file= /var/awslogs/agent-state
-            [/var/log/lenses/lenses]
-            file = /var/log/lenses/lenses.log
-            log_group_name = ${CloudWatchLogsGroup}
-            log_stream_name = {instance_id}/lenses.log
-            [/var/log/lenses/lenses-warn]
-            file = /var/log/lenses/lenses-warn.log
-            log_group_name = ${CloudWatchLogsGroup}
-            log_stream_name = {instance_id}/lenses-warn.log
-            [/var/log/lenses/lenses-metrics]
-            file = /var/log/lenses/metrics.log
-            log_group_name = ${CloudWatchLogsGroup}
-            log_stream_name = {instance_id}/lenses-metrics.log
-            EOF
-
-            curl https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -O
-            python awslogs-agent-setup.py -n -r ${AWS::Region} -c /tmp/cwlogs/lenses.conf || error_exit 'Failed to run CloudWatch Logs agent setup'
-
+            ./configure.sh -r ${AWS::Region} \
+             -g '${CloudWatchLogsGroup}' \
+             -l '${LensesLicense}' \
+             -p ${LensesPort} \
+             -b '${BrokerURLs}' \
+             -z '${ZookeeperURLs}' \
+             -c '${ConnectURLs}' \
+             -s '${SchemaRegistryURLs}' \
+             -a '${AutoBroker}' \
+             -d '${AutoZookeeper}' \
+             -w '${AutoWorker}'
 
   # Gather Logs from Cloudwatch with the stack group name
   CloudWatchLogsGroup:
@@ -313,7 +268,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: 0.0.0.0/0
+          CidrIp: !Ref LensesLocation
 
   IAMProfile:
     Type: AWS::IAM::InstanceProfile
