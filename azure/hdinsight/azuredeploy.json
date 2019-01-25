@@ -1,116 +1,116 @@
 {
-    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
-    "contentVersion": "1.0.0.0",
-    "parameters": {
-      "clusterName": {
-        "type": "string",
-        "metadata": {
-          "description": "The name of the existing HDInsight cluster."
-        }
-      },
-      "clusterLoginUserName": {
-        "type": "string",
-        "defaultValue": "admin",
-        "metadata": {
-          "description": "These credentials can be used to submit jobs to the cluster and to log into cluster dashboards."
-        }
-      },
-      "clusterLoginPassword": {
-        "type": "securestring",
-        "metadata": {
-          "description": "The password must be at least 10 characters in length and must contain at least one digit, one non-alphanumeric character, and one upper or lower case letter."
-        }
-      },
-      "vmSize": {
-        "type": "string",
-        "defaultValue": "Standard_D3",
-        "allowedValues": [
-          "Standard_A1",
-          "Standard_A2",
-          "Standard_A3",
-          "Standard_A4",
-          "Standard_D1",
-          "Standard_D2",
-          "Standard_D3",
-          "Standard_D4"
-        ],
-        "metadata": {
-          "description": "Size of the edge node that hosts Lenses"
-        }
-      },
-      "lensesLicense": {
-        "type": "securestring",
-        "metadata": {
-          "description": "Your own license for Lenses. Please download it here https://www.landoop.com/downloads/"
-        }
-      },
-      "schemaRegistry": {
-        "type": "string",
-        "defaultValue": "",
-        "metadata": {
-          "description": "Schema Registry hosts. (Optional)"
-        }
-      },
-      "connect": {
-        "type": "string",
-        "defaultValue": "",
-        "metadata": {
-          "description": "Connect hosts. (Optional)"
-        }
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "clusterName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the existing HDInsight cluster."
       }
     },
-    "variables": {
-      "applicationName": "lenses",
-      "singleQuote": "'"
-    },
-    "resources": [
-      {
-        "name": "[concat(parameters('clusterName'),'/', variables('applicationName'))]",
-        "type": "Microsoft.HDInsight/clusters/applications",
-        "apiVersion": "2015-03-01-preview",
-        "dependsOn": [],
-        "properties": {
-          "marketPlaceIdentifier": "EmptyNode",
-          "computeProfile": {
-            "roles": [
-              {
-                "name": "edgenode",
-                "targetInstanceCount": 1,
-                "hardwareProfile": {
-                  "vmSize": "[parameters('vmSize')]"
-                }
-              }
-            ]
-          },
-          "installScriptActions": [
-            {
-              "name": "Lenses-Install",
-              "uri": "https://archive.landoop.com/repository/cloud/azure/hdinsight/configure.sh",
-              "parameters": "[concat('-n ', parameters('clusterName'), ' -l ', variables('singleQuote'), parameters('lensesLicense'), variables('singleQuote'), ' -s ', variables('singleQuote'), parameters('schemaRegistry'), variables('singleQuote'), ' -c ', variables('singleQuote'), parameters('connect'), variables('singleQuote'), ' -p ', variables('singleQuote'), parameters('clusterLoginPassword'), variables('singleQuote'), ' -a ', variables('singleQuote'), parameters('clusterLoginUserName'), variables('singleQuote'))]",
-              "roles": [
-                "edgenode"
-              ]
-            }
-          ],
-          "uninstallScriptActions": [],
-          "httpsEndpoints": [
-            {
-              "subDomainSuffix": "len",
-              "disableGatewayAuth": true,
-              "destinationPort": 9991,
-              "accessModes": [
-                "webpage"
-              ]
-            }
-          ],
-          "applicationType": "CustomApplication"
-        }
+    "clusterLoginUserName": {
+      "type": "string",
+      "defaultValue": "admin",
+      "metadata": {
+        "description": "These credentials can be used to submit jobs to the cluster and to log into cluster dashboards."
       }
-    ],
-    "outputs": {
-      "application": {
-        "type": "object",
-        "value": "[reference(resourceId('Microsoft.HDInsight/clusters/applications/', parameters('clusterName'), variables('applicationName')))]"
+    },
+    "clusterLoginPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The password must be at least 10 characters in length and must contain at least one digit, one non-alphanumeric character, and one upper or lower case letter."
+      }
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_D3",
+      "allowedValues": [
+        "Standard_A1",
+        "Standard_A2",
+        "Standard_A3",
+        "Standard_A4",
+        "Standard_D1",
+        "Standard_D2",
+        "Standard_D3",
+        "Standard_D4"
+      ],
+      "metadata": {
+        "description": "Size of the edge node that hosts Lenses"
+      }
+    },
+    "lensesLicense": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Your own license for Lenses. Please download it here https://www.landoop.com/downloads/"
+      }
+    },
+    "schemaRegistry": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Schema Registry hosts. (Optional)"
+      }
+    },
+    "connect": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Connect hosts. (Optional)"
       }
     }
+  },
+  "variables": {
+    "applicationName": "lenses",
+    "singleQuote": "'"
+  },
+  "resources": [
+    {
+      "name": "[concat(parameters('clusterName'),'/', variables('applicationName'))]",
+      "type": "Microsoft.HDInsight/clusters/applications",
+      "apiVersion": "2015-03-01-preview",
+      "dependsOn": [],
+      "properties": {
+        "marketPlaceIdentifier": "EmptyNode",
+        "computeProfile": {
+          "roles": [
+            {
+              "name": "edgenode",
+              "targetInstanceCount": 1,
+              "hardwareProfile": {
+                "vmSize": "[parameters('vmSize')]"
+              }
+            }
+          ]
+        },
+        "installScriptActions": [
+          {
+            "name": "Lenses-Install",
+            "uri": "https://archive.landoop.com/repository/cloud/azure/hdinsight/configure.sh",
+            "parameters": "[concat('-n ', parameters('clusterName'), ' -l ', variables('singleQuote'), parameters('lensesLicense'), variables('singleQuote'), ' -s ', variables('singleQuote'), parameters('schemaRegistry'), variables('singleQuote'), ' -c ', variables('singleQuote'), parameters('connect'), variables('singleQuote'), ' -p ', variables('singleQuote'), parameters('clusterLoginPassword'), variables('singleQuote'), ' -a ', variables('singleQuote'), parameters('clusterLoginUserName'), variables('singleQuote'))]",
+            "roles": [
+              "edgenode"
+            ]
+          }
+        ],
+        "uninstallScriptActions": [],
+        "httpsEndpoints": [
+          {
+            "subDomainSuffix": "len",
+            "disableGatewayAuth": true,
+            "destinationPort": 9991,
+            "accessModes": [
+              "webpage"
+            ]
+          }
+        ],
+        "applicationType": "CustomApplication"
+      }
+    }
+  ],
+  "outputs": {
+    "application": {
+      "type": "object",
+      "value": "[reference(resourceId('Microsoft.HDInsight/clusters/applications/', parameters('clusterName'), variables('applicationName')))]"
+    }
   }
+}

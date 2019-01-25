@@ -29,7 +29,7 @@ Metadata:
           - AutoZookeeper
           - AutoWorker
       - Label:
-          default:  Kafka (manually)
+          default: Kafka (manually)
         Parameters:
           - BrokerURLs
           - ZookeeperURLs
@@ -60,7 +60,7 @@ Metadata:
       AutoWorker:
         default: Worker (optional)
       BrokerURLs:
-        default: Broker URLs
+        default: Kafka Brokers
       ZookeeperURLs:
         default: Zookeeper URLs
       SchemaRegistryURLs:
@@ -77,7 +77,7 @@ Parameters:
     ConstraintDescription: The ClusterName value must be alphanumeric
     Description: Provide the ECS Cluster ID that Lenses should run on
     Type: String
-  
+
   ServiceName:
     Type: String
     Default: Lenses
@@ -92,10 +92,10 @@ Parameters:
     Type: Number
     Default: 5120
     Description: How much memory in megabytes to give the container. Prefer >= 4g.
-  
+
   Subnets:
-    Description: Choose which subnets the Application Load Balancer should be deployed to
     Type: List<AWS::EC2::Subnet::Id>
+    Description: Choose which subnets the Application Load Balancer should be deployed to
 
   LensesLicense:
     Description: You can get a license here https://www.landoop.com/downloads/. Please use the JSON file here.
@@ -106,7 +106,7 @@ Parameters:
     Type: Number
     Default: 9991
     Description: The port which Lenses will use to start. Default is 9991
-  
+
   AutoRegion:
     Type: String
     Default: eu-west-1
@@ -129,7 +129,7 @@ Parameters:
 
   BrokerURLs:
     Description: >-
-      Apache Kafka Broker URLs (comma-separated list) eg. PLAINTEXT://broker.1.url:9092,PLAINTEXT://broker.2.url:9092. Ignore it if you use Broker EC2 instances
+     Kafka Brokers (comma-separated list) eg. PLAINTEXT://broker.1.url:9092,PLAINTEXT://broker.2.url:9092. Ignore it if you use Broker EC2 instances
     Type: String
 
   ZookeeperURLs:
@@ -143,9 +143,9 @@ Parameters:
       Schema registry URLs (comma-separated list) eg. http://schema.registry.2.url,http://schema.registry.2.url. Ignore it if you use Schema Registry EC2 instances
 
   ConnectURLs:
+    Type: String
     Description: >-
       Connect URLs (comma-separated list)  eg. http://connect.2.url,http://connect.2.url. Ignore it if you use Connect EC2 instances
-    Type: String
 
 Rules:
   Subnets:
@@ -174,10 +174,10 @@ Resources:
       SourceSecurityGroupId: !Ref 'PublicLoadBalancerSG'
 
   # ECS Service to run the Task definition
-  Service: 
+  Service:
     Type: AWS::ECS::Service
     DependsOn: LoadBalancerRule
-    Properties: 
+    Properties:
       ServiceName: !Ref ServiceName
       Cluster: !Ref ClusterName
       LaunchType: FARGATE
@@ -216,7 +216,7 @@ Resources:
           Image: landoop/lenses:2.2
           Cpu: !Ref 'ContainerCpu'
           Memory: !Ref 'ContainerMemory'
-          Environment: 
+          Environment:
             - Name: LICENSE
               Value: !Ref LensesLicense
             - Name: LENSES_PORT
@@ -268,13 +268,13 @@ Resources:
                 awslogs-region: !Ref AWS::Region
                 awslogs-group: !Ref AWS::StackName
                 awslogs-stream-prefix: lenses-stream
-  
+
   # Gather Logs from Cloudwatch with the stack group name
   CloudWatchLogsGroup:
     Type: AWS::Logs::LogGroup
     Properties: 
         LogGroupName: !Ref AWS::StackName
-  
+
   # Load Balancer
   PublicLoadBalancerSG:
     Type: AWS::EC2::SecurityGroup
@@ -292,7 +292,7 @@ Resources:
         Name: !Sub Lenses-${AWS::StackName}
         Subnets: !Ref Subnets
         SecurityGroups: 
-            - !Ref PublicLoadBalancerSG
+          - !Ref PublicLoadBalancerSG
 
   LoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -301,8 +301,8 @@ Resources:
       Port: 80
       Protocol: HTTP 
       DefaultActions: 
-          - Type: forward
-            TargetGroupArn: !Ref TargetGroup
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
 
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -330,7 +330,7 @@ Resources:
       Actions:
           - TargetGroupArn: !Ref TargetGroup
             Type: forward
-  
+
   # Role for sending logs in Cloudwatch 
   TaskExecutionRole: 
     Type: AWS::IAM::Role

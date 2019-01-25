@@ -31,7 +31,7 @@ Metadata:
           - ZookeeperURLs
           - SchemaRegistryURLs
           - ConnectURLs
-          
+
     ParameterLabels:
       LensesLicense:
         default: License (JSON)
@@ -52,9 +52,9 @@ Metadata:
       SchemaRegistryURLs:
         default: Schema Registry JSON
       ConnectURLs:
-        default: Connect JSON   
+        default: Connect JSON
       SubnetId:
-        default: Subnet ID of VPC   
+        default: Subnet ID of VPC
 Parameters:
   KeyName:
     Description: "Name of an existing EC2 KeyPair to enable SSH access to the instance"
@@ -80,9 +80,9 @@ Parameters:
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
 
   VPC:
-    Description: The VPC that the EC2 will be deployed to
     Type: AWS::EC2::VPC::Id
-  
+    Description: The VPC that the EC2 will be deployed to
+
   SubnetId:
     Type: AWS::EC2::Subnet::Id
     Description: SubnetId of an existing subnet (for the primary network) in your
@@ -127,7 +127,7 @@ Parameters:
     - r4.8xlarge
     - r4.16xlarge
     Description: Lenses EC2 instance type
-      
+
   LensesLicense:
     Description: You can get a license here https://www.landoop.com/downloads/. Please use the JSON file here.
     Type: String
@@ -174,9 +174,9 @@ Parameters:
       Schema registry JSON. Check documentation https://docs.lenses.io/install_setup/configuration/lenses-config.html
 
   ConnectURLs:
+    Type: String
     Description: >-
       Connect JSON. https://docs.lenses.io/install_setup/configuration/lenses-config.html
-    Type: String
 
 Mappings:
   RegionMap:
@@ -236,7 +236,6 @@ Resources:
 
             curl https://archive.landoop.com/repository/cloud/aws/docker/configure.sh -O
             chmod +x configure.sh
-            
             ./configure.sh -r ${AWS::Region} \
              -g '${CloudWatchLogsGroup}' \
              -l '${LensesLicense}' \
@@ -256,9 +255,9 @@ Resources:
         LogGroupName: !Ref AWS::StackName
 
   LensesSecurityGroup:
-      Type: "AWS::EC2::SecurityGroup"
-      Properties:
-        GroupDescription : "Enable HTTP and SSH access For Lenses"
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription : "Enable HTTP and SSH access For Lenses"
         VpcId: !Ref VPC
         SecurityGroupIngress:
         - IpProtocol: tcp
@@ -278,7 +277,7 @@ Resources:
         - !Ref EC2Role
       InstanceProfileName: !Sub ec2-iam-profile-${AWS::StackName}
 
-  EC2Role: 
+  EC2Role:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub EC2-${AWS::StackName}
@@ -295,6 +294,7 @@ Resources:
             Statement:
             - Effect: Allow
               Action:
+                # Allow the ECS tasks to upload logs to CloudWatch
                 - 'logs:CreateLogGroup'
                 - 'logs:CreateLogStream'
                 - 'logs:PutLogEvents'

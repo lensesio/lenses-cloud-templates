@@ -18,13 +18,13 @@ Metadata:
           - LensesPort
           - LensesLocation
       - Label:
-          default:  Kafka (manually)
+          default: Kafka (manually)
         Parameters:
           - BrokerURLs
           - ZookeeperURLs
           - SchemaRegistryURLs
           - ConnectURLs
-          
+
     ParameterLabels:
       LensesLicense:
         default: License (JSON)
@@ -65,9 +65,9 @@ Parameters:
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
 
   VPC:
-    Description: The VPC that the ECS cluster is deployed to
     Type: AWS::EC2::VPC::Id
-  
+    Description: The VPC that the ECS cluster is deployed to
+
   SubnetId:
     Type: AWS::EC2::Subnet::Id
     Description: SubnetId of an existing subnet (for the primary network) in your
@@ -112,7 +112,7 @@ Parameters:
     - r4.8xlarge
     - r4.16xlarge
     Description: Lenses EC2 instance type
-      
+
   LensesLicense:
     Description: You can get a license here https://www.landoop.com/downloads/. Please use the JSON file here.
     Type: String
@@ -122,10 +122,10 @@ Parameters:
     Type: Number
     Default: 9991
     Description: The port which Lenses will use to start. Default is 9991
- 
+
   BrokerURLs:
     Description: >-
-      Apache Kafka Broker URLs (comma-separated list) eg. PLAINTEXT://broker.1.url:9092,PLAINTEXT://broker.2.url:9092. Ignore it if you use Broker EC2 instances
+      Kafka Brokers (comma-separated list) eg. PLAINTEXT://broker.1.url:9092,PLAINTEXT://broker.2.url:9092. Ignore it if you use Broker EC2 instances
     Type: String
 
   ZookeeperURLs:
@@ -217,9 +217,9 @@ Resources:
         LogGroupName: !Ref AWS::StackName
 
   LensesSecurityGroup:
-      Type: "AWS::EC2::SecurityGroup"
-      Properties:
-        GroupDescription : "Enable HTTP and SSH access For Lenses"
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription : "Enable HTTP and SSH access For Lenses"
         VpcId: !Ref VPC
         SecurityGroupIngress:
         - IpProtocol: tcp
@@ -239,7 +239,7 @@ Resources:
         - !Ref EC2Role
       InstanceProfileName: !Sub ec2-iam-profile-${AWS::StackName}
 
-  EC2Role: 
+  EC2Role:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub EC2-${AWS::StackName}

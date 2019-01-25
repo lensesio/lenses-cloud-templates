@@ -55,7 +55,7 @@ Metadata:
       SchemaRegistryURLs:
         default: Schema Registry JSON
       ConnectURLs:
-        default: Connect JSON 
+        default: Connect JSON
       Subnets:
         default: Subnets of ELB  
 
@@ -88,8 +88,8 @@ Mappings:
 
 Parameters:
   KeyName:
-    Type: "AWS::EC2::KeyPair::KeyName"
     Description: "Name of an existing EC2 KeyPair to enable SSH access to the instance"
+    Type: "AWS::EC2::KeyPair::KeyName"
     ConstraintDescription : "Can contain only ASCII characters."
 
   SSHLocation:
@@ -113,7 +113,7 @@ Parameters:
   VPC:
     Type: AWS::EC2::VPC::Id
     Description: The VPC that the reference architecture will be deployed to.
-   
+
   Subnets:
     Type: List<AWS::EC2::Subnet::Id>
     Description: Choose only public Subnets which will be used for ELB.
@@ -169,7 +169,7 @@ Parameters:
     Type: Number
     Default: 9991
     Description: The port which Lenses will use to start. Default is 9991
-  
+
   AutoRegion:
     Type: String
     Default: eu-west-1
@@ -192,7 +192,7 @@ Parameters:
 
   BrokerURLs:
     Description: >-
-      Apache Kafka Broker URLs (comma-separated list) eg. PLAINTEXT://broker.1.url:9092,PLAINTEXT://broker.2.url:9092. Ignore it if you use Broker EC2 instances
+     Kafka Brokers (comma-separated list) eg. PLAINTEXT://broker.1.url:9092,PLAINTEXT://broker.2.url:9092. Ignore it if you use Broker EC2 instances
     Type: String
 
   ZookeeperURLs:
@@ -206,9 +206,9 @@ Parameters:
       Schema registry JSON. Check documentation https://docs.lenses.io/install_setup/configuration/lenses-config.html
 
   ConnectURLs:
+    Type: String
     Description: >-
       Connect JSON. https://docs.lenses.io/install_setup/configuration/lenses-config.html
-    Type: String
 
 Rules:
   Subnets:
@@ -294,7 +294,6 @@ Resources:
 
             curl https://archive.landoop.com/repository/cloud/aws/docker/configure.sh -O
             chmod +x configure.sh
-            
             ./configure.sh -r ${AWS::Region} \
              -g '${CloudWatchLogsGroup}' \
              -l '${LensesLicense}' \
@@ -313,12 +312,14 @@ Resources:
     Properties: 
         LogGroupName: !Ref AWS::StackName
 
+  # Load Balancer
   PublicLoadBalancerSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Access to the public facing load balancer
       VpcId: !Ref 'VPC'
       SecurityGroupIngress:
+        # Allow access to ALB from anywhere on the internet
         - CidrIp: 0.0.0.0/0
           IpProtocol: -1
 
@@ -339,7 +340,7 @@ Resources:
       DefaultActions: 
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
-    
+
   LoadBalancerRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Properties:
@@ -371,7 +372,7 @@ Resources:
 
   IAMProfile:
     Type: AWS::IAM::InstanceProfile
-    Properties: 
+    Properties:
       Path: /
       Roles:
         - !Ref EC2Role
@@ -394,6 +395,7 @@ Resources:
             Statement:
             - Effect: Allow
               Action:
+                # Allow the ECS tasks to upload logs to CloudWatch
                 - 'logs:CreateLogGroup'
                 - 'logs:CreateLogStream'
                 - 'logs:PutLogEvents'
