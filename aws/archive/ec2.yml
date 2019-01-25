@@ -169,7 +169,7 @@ Mappings:
       ubuntu: ami-063aa838bd7631e0b
     us-west-2:
       ubuntu: ami-0bbe6b35405ecebd
-      
+
 Resources:
   Lenses:
     Type: AWS::EC2::Instance
@@ -233,7 +233,7 @@ Resources:
 
   IAMProfile:
     Type: AWS::IAM::InstanceProfile
-    Properties: 
+    Properties:
       Path: /
       Roles:
         - !Ref EC2Role

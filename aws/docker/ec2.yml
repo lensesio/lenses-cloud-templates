@@ -89,7 +89,7 @@ Parameters:
       Virtual Private Cloud (VPC)
     ConstraintDescription: must be an existing subnet in the selected Virtual Private
       Cloud.
-  
+
   InstanceType:
     Type: String
     Default: t2.medium
@@ -157,10 +157,10 @@ Parameters:
     Type: String
     Default: worker
     Description: Tag Name you used for your Workers (Connect, Schema Registry). Default value is worker
- 
+
   BrokerURLs:
     Description: >-
-      Kafka Brokers (comma-separated list) eg. PLAINTEXT://broker.1.url:9092,PLAINTEXT://broker.2.url:9092
+     Kafka Brokers (comma-separated list) eg. PLAINTEXT://broker.1.url:9092,PLAINTEXT://broker.2.url:9092
     Type: String
 
   ZookeeperURLs:
@@ -204,7 +204,7 @@ Mappings:
       ubuntu: ami-063aa838bd7631e0b
     us-west-2:
       ubuntu: ami-0bbe6b35405ecebd
-      
+
 Resources:
   Lenses:
     Type: AWS::EC2::Instance
@@ -271,7 +271,7 @@ Resources:
 
   IAMProfile:
     Type: AWS::IAM::InstanceProfile
-    Properties: 
+    Properties:
       Path: /
       Roles:
         - !Ref EC2Role
