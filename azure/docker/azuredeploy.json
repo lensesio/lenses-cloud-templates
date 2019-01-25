@@ -116,10 +116,10 @@
     "ubuntuOSVersion": "18.04-LTS",
     "singleQuote": "'",
     "securityGroups": [
-      {"name": "adminGroup", "roles": ["admin", "write", "read"]},
+      {"name": "adminGroup", "roles": ["Admin", "DataPolicyWrite", "DataPolicyRead", "TableStorageWrite", "AlertsWrite"]},
       {"name": "readGroup",  "roles": ["read"]},
-      {"name": "datapolicyreadGroup",  "roles": ["datapolicyread"]},
-      {"name": "datapolicywritegroup",  "roles": ["datapolicywrite"]}
+      {"name": "datapolicyreadGroup",  "roles": ["DataPolicyRead"]},
+      {"name": "datapolicywritegroup",  "roles": ["DataPolicyWrite"]}
     ],
     "securityUsers": [
       {"username": "admin", "password": "admin", "displayname": "Lenses Admin", "groups": ["adminGroup"]},
@@ -228,7 +228,7 @@
       "name": "[parameters('vmName')]",
       "location": "[parameters('location')]",
       "tags": {
-        "displayName": "VirtualMachine"
+        "displayName": "lenses"
       },
       "dependsOn": [
         "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
