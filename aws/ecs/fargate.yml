@@ -234,15 +234,15 @@ Resources:
             - Name: LENSES_SECURITY_GROUPS
               Value: |
                 [
-                  {"name": "adminGroup", "roles": ["admin", "write", "read"]},
-                  {"name": "readGroup",  "roles": ["read"]},
-                  {"name": "datapolicyreadGroup",  "roles": ["datapolicyread"]},
-                  {"name": "datapolicywritegroup",  "roles": ["datapolicywrite"]}
+                  {"name": "adminGroup", "roles": ["Admin", "DataPolicyWrite", "DataPolicyRead", "TableStorageWrite", "AlertsWrite"]},
+                  {"name": "readGroup",  "roles": ["read", "DataPolicyRead"]},
+                  {"name": "datapolicyreadGroup",  "roles": ["DataPolicyRead"]},
+                  {"name": "datapolicywritegroup",  "roles": ["DataPolicyWrite"]}
                 ]
             - Name: LENSES_SECURITY_USERS
               Value: |
                 [
-                  {"username": "admin", "password": "admin", "displayname": "Lenses Admin", "groups": ["adminGroup", "datapolicywritegroup"]},
+                  {"username": "admin", "password": "admin", "displayname": "Lenses Admin", "groups": ["adminGroup"]},
                   {"username": "read", "password": "read", "displayname": "Read Only", "groups": ["readGroup"]},
                   {"username": "datapolicyread", "password": "datapolicyread", "displayname": "datapolicyread", "groups": ["datapolicyreadGroup"]},
                   {"username": "datapolicywrite", "password": "datapolicywrite", "displayname": "datapolicywrite", "groups": ["datapolicywritegroup"]}
