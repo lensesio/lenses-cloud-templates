@@ -124,12 +124,10 @@ Parameters:
   
   InstanceType:
     Type: String
-    Default: t2.medium
+    Default: t2.large
     AllowedValues:
-    - t2.medium
     - t2.large
     - t2.xlarge
-    - t3.medium
     - t3.large
     - t3.xlarge
     - m4.large
