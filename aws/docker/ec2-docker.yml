@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Deploy Lenses on AWS EC2 instance.
+Description: Deploy Lenses on AWS EC2 instance with Docker.
 Metadata:
   'AWS::CloudFormation::Interface':
     ParameterGroups:
@@ -18,6 +18,13 @@ Metadata:
           - LensesPort
           - LensesLocation
       - Label:
+          default: Kafka (autodiscover)
+        Parameters:
+          - AutoRegion
+          - AutoBroker
+          - AutoZookeeper
+          - AutoWorker
+      - Label:
           default: Kafka (manually)
         Parameters:
           - BrokerURLs
@@ -30,6 +37,14 @@ Metadata:
         default: License (JSON)
       LensesPort:
         default: Port
+      AutoRegion:
+        default: Region of Kafka
+      AutoBroker:
+        default: Brokers (optional)
+      AutoZookeeper:
+        default: Zookeeper (optional)
+      AutoWorker:
+        default: Worker (optional)
       BrokerURLs:
         default: Kafka Brokers
       ZookeeperURLs:
@@ -39,7 +54,7 @@ Metadata:
       ConnectURLs:
         default: Connect JSON
       SubnetId:
-        default: Subnet ID of VPC   
+        default: Subnet ID of VPC
 Parameters:
   KeyName:
     Description: "Name of an existing EC2 KeyPair to enable SSH access to the instance"
@@ -66,7 +81,7 @@ Parameters:
 
   VPC:
     Type: AWS::EC2::VPC::Id
-    Description: The VPC that the ECS cluster is deployed to
+    Description: The VPC that the EC2 will be deployed to
 
   SubnetId:
     Type: AWS::EC2::Subnet::Id
@@ -74,7 +89,7 @@ Parameters:
       Virtual Private Cloud (VPC)
     ConstraintDescription: must be an existing subnet in the selected Virtual Private
       Cloud.
-  
+
   InstanceType:
     Type: String
     Default: t2.medium
@@ -123,9 +138,29 @@ Parameters:
     Default: 9991
     Description: The port which Lenses will use to start. Default is 9991
 
+  AutoRegion:
+    Type: String
+    Default: eu-west-1
+    Description: The region where your Apache Kafka is deployed.
+
+  AutoBroker:
+    Type: String
+    Default: broker
+    Description: The Tag Name you used for your brokers. Default value is broker
+
+  AutoZookeeper:
+    Type: String
+    Default: zookeeper
+    Description: Tag Name you used for your Zookeeper. Default value is zookeeper
+
+  AutoWorker:
+    Type: String
+    Default: worker
+    Description: Tag Name you used for your Workers (Connect, Schema Registry). Default value is worker
+
   BrokerURLs:
     Description: >-
-      Kafka Brokers (comma-separated list) eg. PLAINTEXT://broker.1.url:9092,PLAINTEXT://broker.2.url:9092. Ignore it if you use Broker EC2 instances
+     Kafka Brokers (comma-separated list) eg. PLAINTEXT://broker.1.url:9092,PLAINTEXT://broker.2.url:9092
     Type: String
 
   ZookeeperURLs:
@@ -199,7 +234,7 @@ Resources:
             #!/bin/bash
             set -o errexit
 
-            curl https://archive.landoop.com/repository/cloud/aws/vm/2.3/configure.sh -O
+            curl https://archive.landoop.com/repository/cloud/aws/docker/2.3/configure.sh -O
             chmod +x configure.sh
             ./configure.sh -r ${AWS::Region} \
              -g '${CloudWatchLogsGroup}' \
@@ -208,7 +243,10 @@ Resources:
              -b '${BrokerURLs}' \
              -z '${ZookeeperURLs}' \
              -c '${ConnectURLs}' \
-             -s '${SchemaRegistryURLs}'
+             -s '${SchemaRegistryURLs}' \
+             -a '${AutoBroker}' \
+             -d '${AutoZookeeper}' \
+             -w '${AutoWorker}'
 
   # Gather Logs from Cloudwatch with the stack group name
   CloudWatchLogsGroup:
@@ -251,18 +289,18 @@ Resources:
           Action: ['sts:AssumeRole']
       Path: /
       Policies:
-        - PolicyName: EC2-LensesRolePolicy
+        - PolicyName: EC2TaskExecutionRolePolicy
           PolicyDocument:
             Statement:
             - Effect: Allow
               Action:
-                # Allow the ECS tasks to upload logs to CloudWatch
                 - 'logs:CreateLogGroup'
                 - 'logs:CreateLogStream'
                 - 'logs:PutLogEvents'
+                - 'ec2:Describe*'
               Resource: '*'
 
 Outputs:
   FQDN:
     Description: "FQDN for EC2 instance"
-    Value: !Join [":", [!GetAtt Lenses.PublicDnsName, !Ref LensesPort]]
+    Value: !GetAtt Lenses.PublicDnsName

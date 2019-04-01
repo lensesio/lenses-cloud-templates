@@ -258,16 +258,16 @@ Resources:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
       GroupDescription : "Enable HTTP and SSH access For Lenses"
-        VpcId: !Ref VPC
-        SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: '22'
-          ToPort: '22'
-          CidrIp: !Ref SSHLocation
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: !Ref LensesLocation
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '22'
+        ToPort: '22'
+        CidrIp: !Ref SSHLocation
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: !Ref LensesLocation
 
   IAMProfile:
     Type: AWS::IAM::InstanceProfile
