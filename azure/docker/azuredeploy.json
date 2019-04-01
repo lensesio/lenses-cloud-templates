@@ -104,7 +104,7 @@
     "diagStorageAccountName": "[concat(parameters('vmName'), 'diag')]",
     "diskStorageType": "Standard_LRS",
     "publicIPAddressType": "Dynamic",
-    "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('existingVirtualNetworkName'),  parameters('subnetName'))]",
+    "subnetRef": "[resourceId(parameters('existingVirtualNetworkResourceGroup'), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVirtualNetworkName'),  parameters('subnetName'))]",
     "nicName": "[concat(parameters('vmName'), '-nic1')]",
     "nsgName": "[concat(parameters('vmName'), '-secgroup')]",
     "nsgID": "[resourceId('Microsoft.Network/networkSecurityGroups',variables('nsgName'))]",
