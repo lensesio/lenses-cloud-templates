@@ -234,7 +234,7 @@ Resources:
             #!/bin/bash
             set -o errexit
 
-            curl https://archive.landoop.com/repository/cloud/aws/docker/configure.sh -O
+            curl https://archive.landoop.com/repository/cloud/aws/docker/2.3/configure.sh -O
             chmod +x configure.sh
             ./configure.sh -r ${AWS::Region} \
              -g '${CloudWatchLogsGroup}' \

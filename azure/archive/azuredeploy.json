@@ -11,13 +11,7 @@
     },
     "vmSize": {
       "type": "string",
-      "defaultValue": "Standard_DS2_v2",
-      "allowedValues": [
-        "Standard_DS2_v2",
-        "Standard_DS3_v2",
-        "Standard_DS4_v2",
-        "Standard_DS5_v2"
-      ],
+      "defaultValue": "Standard_DS3_v2",
       "metadata": {
         "description": "Size of the VM"
       }
@@ -110,7 +104,7 @@
     "diagStorageAccountName": "[concat(parameters('vmName'), 'diag')]",
     "diskStorageType": "Standard_LRS",
     "publicIPAddressType": "Dynamic",
-    "subnetRef": "[resourceId(parameters('existingVirtualNetworkResourceGroup'), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVirtualNetworkName'),  parameters('subnetName'))]",
+    "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('existingVirtualNetworkName'),  parameters('subnetName'))]",
     "nicName": "[concat(parameters('vmName'), '-nic1')]",
     "nsgName": "[concat(parameters('vmName'), '-secgroup')]",
     "nsgID": "[resourceId('Microsoft.Network/networkSecurityGroups',variables('nsgName'))]",
@@ -133,8 +127,21 @@
   },
   "resources": [
     {
-      "apiVersion": "2018-02-01",
+      "name": "pid-841c2355-1d79-5f3b-8efb-0a9e22cd069c",
+      "apiVersion": "2018-11-01",
+      "type": "Microsoft.Resources/deployments",
+      "properties": {
+          "mode": "Incremental",
+          "template": {
+              "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+              "contentVersion": "1.0.0.0",
+              "resources": []
+          }
+      }
+    },
+    {
       "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2018-11-01",
       "name": "[variables('diagStorageAccountName')]",
       "location": "[parameters('location')]",
       "sku": {
@@ -144,8 +151,8 @@
       "properties": {}
     },
     {
-      "apiVersion": "2015-06-15",
       "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2018-11-01",
       "name": "[variables('publicIPAddressName')]",
       "location": "[parameters('location')]",
       "tags": {
@@ -156,40 +163,8 @@
       }
     },
     {
-      "apiVersion": "2015-06-15",
-      "type": "Microsoft.Network/networkInterfaces",
-      "name": "[concat(parameters('vmName'), '-nic1')]",
-      "location": "[parameters('location')]",
-      "dependsOn": [
-        "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
-        "[variables('nsgID')]"
-      ],
-      "tags": {
-        "displayName": "NetworkInterface"
-      },
-      "properties": {
-        "ipConfigurations": [
-          {
-            "name": "lensesipconfig",
-            "properties": {
-              "privateIPAllocationMethod": "Dynamic",
-              "publicIPAddress": {
-                "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
-              },
-              "subnet": {
-                "id": "[variables('subnetRef')]",
-                "networkSecurityGroup": {
-                  "id": "[variables('nsgID')]"
-                }
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "apiVersion": "2015-05-01-preview",
       "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2018-11-01",
       "name": "[variables('nsgName')]",
       "location": "[parameters('location')]",
       "properties": {
@@ -200,7 +175,7 @@
               "description": "Allow HTTP",
               "protocol": "Tcp",
               "sourcePortRange": "*",
-              "destinationPortRange": "80",
+              "destinationPortRange": "9991",
               "sourceAddressPrefix": "Internet",
               "destinationAddressPrefix": "*",
               "access": "Allow",
@@ -226,6 +201,38 @@
       }
     },
     {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2018-11-01",
+      "name": "[variables('nicName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
+        "[resourceId('Microsoft.Network/networkSecurityGroups/', variables('nsgName'))]"
+      ],
+      "tags": {
+        "displayName": "NetworkInterface"
+      },
+      "properties": {
+        "networkSecurityGroup": {
+          "id": "[variables('nsgID')]"
+        },
+        "ipConfigurations": [
+          {
+            "name": "lensesipconfig",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+              },
+              "subnet": {
+                "id": "[variables('subnetRef')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "apiVersion": "2017-03-30",
       "type": "Microsoft.Compute/virtualMachines",
       "name": "[parameters('vmName')]",
@@ -234,7 +241,8 @@
         "displayName": "lenses"
       },
       "dependsOn": [
-        "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
+        "[resourceId('Microsoft.Storage/storageAccounts/', variables('diagStorageAccountName'))]",
+        "[resourceId('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
       ],
       "properties": {
         "hardwareProfile": {
@@ -294,8 +302,8 @@
         "typeHandlerVersion": "2.0",
         "autoUpgradeMinorVersion": true,
         "protectedSettings": {
-          "fileUris": ["https://archive.landoop.com/repository/cloud/azure/vm/configure.sh"],
-          "commandToExecute": "[concat('-l ', variables('singleQuote'), parameters('lensesLicense'), variables('singleQuote'), ' -z ', parameters('zookeeper'), ' -s ', variables('singleQuote'), ' -b ', parameters('kafkaBrokers'), ' -s ', variables('singleQuote'), parameters('schemaRegistry'), variables('singleQuote'), ' -c ', variables('singleQuote'), parameters('connect'), variables('singleQuote'))]"
+          "fileUris": ["https://archive.landoop.com/repository/cloud/azure/vm/2.3/configure.sh"],
+          "commandToExecute": "[concat('./configure.sh  -l ', variables('singleQuote'), parameters('lensesLicense'), variables('singleQuote'), ' -z ', variables('singleQuote'), parameters('zookeeper'), variables('singleQuote'), ' -b ',  variables('singleQuote'), parameters('kafkaBrokers'), variables('singleQuote'), ' -s ', variables('singleQuote'), parameters('schemaRegistry'), variables('singleQuote'), ' -c ', variables('singleQuote'), parameters('connect'), variables('singleQuote'))]"
         }
       }
     }
