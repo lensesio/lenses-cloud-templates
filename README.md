@@ -4,7 +4,7 @@ This repo contains all currently available templates which you can use to deploy
 
 - [Azure](azure/)
 - [AWS](aws/)
-- GCE (coming soon)
+- [GCP](gcp/)
 
 All the templates require the followings:
 - Bring your own license. You can get a license [here](https://www.landoop.com/downloads/)

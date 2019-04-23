@@ -1,0 +1,57 @@
+{% set COMPUTE_URL_BASE = 'https://www.googleapis.com/compute/v1/' %}
+
+{% macro GlobalComputeUrl(project, collection, name) -%}
+{{ COMPUTE_URL_BASE }}projects/{{ project }}/global/{{ collection }}/{{ name }}
+{%- endmacro %}
+
+{% macro ZonalComputeUrl(project, zone, collection, name) -%}
+{{ COMPUTE_URL_BASE }}projects/{{ project }}/zones/{{ zone }}/{{ collection }}/{{ name }}
+{%- endmacro %}
+
+{% macro GenerateManifest(name, port, dockerImage, dockerEnv, lensesLicense, lensesSecurityUsers, lensesSecurityGroups) -%}
+
+{# Generates a Container Manifest given a Template context.
+   Args:
+     context: Template context, which must contain dockerImage and port
+        properties, and an optional dockerEnv property.
+   Returns:
+     A Container Manifest as a YAML string.
+-#}
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: "{{ name }}"
+  app:  "{{ name }}"
+  component: {{ name }}
+  lenses.io/app:  "{{ name }}"
+  lenses.io/app.type: "lenses"
+spec:
+  volumes:
+    - name: {{name}}-volume
+      gcePersistentDisk:
+        pdName: {{name}}-data-disk
+        fsType: ext4
+  containers:
+  - name: {{ name }}
+    image: {{ dockerImage }}
+    imagePullPolicy: Always
+    ports:
+    - hostPort: {{ port }}
+      containerPort: {{ port }}
+    {% if dockerEnv -%}
+    env:
+    {% for key, value in dockerEnv.iteritems() -%}
+    - name: {{ key }}
+      value: '{{ value }}'
+    {% endfor -%}
+    {% endif -%}
+    - name: LICENSE
+      value: '{{ lensesLicense | indent(4) }}'
+    - name: LENSES_SECURITY_GROUPS
+      value: '{{ lensesSecurityGroups | indent(4) }}'
+    - name: LENSES_SECURITY_USERS
+      value: '{{ lensesSecurityUsers | indent(4) }}'
+    volumeMounts:
+    - name: {{name}}-volume
+      mountPath: /data/storage
+{%- endmacro -%}
