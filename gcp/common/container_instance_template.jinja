@@ -1,0 +1,52 @@
+{% from 'container_helper.jinja' import GenerateManifest,GlobalComputeUrl,ZonalComputeUrl %}
+
+{% set VM_NAME = env['name'] + '-vm' %}
+
+resources:
+- name: {{ env['name'] }}-data-disk
+  type: compute.v1.disk
+  properties:
+    zone: {{ properties['zone'] }}
+    sizeGb: {{ properties['diskSizeGB'] }}
+    type: {{ ZonalComputeUrl(env['project'], properties['zone'], 'diskTypes', properties['diskType']) }}
+
+- name: {{ VM_NAME }}
+  type: compute.v1.instance
+  properties:
+    metadata:
+      items:
+      - key: gce-container-declaration
+        value: |
+          {{ GenerateManifest(env['name'], properties['port'], properties['dockerImage'], properties['dockerEnv'], properties['lensesLicense'], properties['lensesSecurityUsers'], properties['lensesSecurityGroups']) | indent(10) }}
+    zone: {{ properties['zone'] }}
+    machineType: {{ ZonalComputeUrl(env['project'], properties['zone'], 'machineTypes', properties['machineType']) }}
+    disks:
+    - deviceName: boot
+      boot: true
+      autoDelete: true
+      mode: READ_WRITE
+      type: PERSISTENT
+      initializeParams:
+        sourceImage: {{ GlobalComputeUrl('cos-cloud', 'images', properties['containerImage']) }}
+    - deviceName: {{ env['name'] }}-data-disk
+      boot: false
+      autoDelete: false
+      mode: READ_WRITE
+      type: PERSISTENT
+      source: $(ref.{{ env['name'] }}-data-disk.selfLink)
+    networkInterfaces:
+    - accessConfigs:
+      - name: external-nat
+        type: ONE_TO_ONE_NAT
+      network: {{ GlobalComputeUrl(env['project'], 'networks', properties['network']) }}
+    serviceAccounts:
+      - email: default
+        scopes:
+        - https://www.googleapis.com/auth/logging.write
+        - https://www.googleapis.com/auth/monitoring.write
+    tags:
+        items: ["{{ env['name'] }}-http"]
+
+outputs:
+- name: instanceTemplateSelfLink
+  value: $(ref.{{ VM_NAME }}.selfLink)

@@ -1,0 +1,14 @@
+imports:
+- path: lenses.jinja
+
+resources:
+- name: lenses2
+  type: lenses.jinja
+  properties:
+    zone: europe-west3-a
+    sourceRanges: "0.0.0.0/0"
+    kafkaBrokers: 
+    lensesLicense: |
+    zookeeper: |
+    schemaRegistry: |
+    connect: |

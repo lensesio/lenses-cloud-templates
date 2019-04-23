@@ -1,0 +1,52 @@
+resources:
+
+- name: {{ env['name'] }}-firewall
+  type: compute.v1.firewall
+  properties:
+    allowed:
+      - IPProtocol: TCP
+        ports: [ {{ properties['lensesPort'] }} ]
+    sourceRanges: [ "{{ properties['sourceRanges'] }}" ]
+    targetTags: ["{{ env['name'] }}-http"]
+
+- name: {{ env["name"] }}
+  type: container_instance_template.jinja
+  properties:
+    zone: {{ properties['zone'] }}
+    dockerImage: landoop/lenses:2.3
+    containerImage: family/cos-stable
+    port: {{ properties['lensesPort'] }}
+    network: {{ properties['network'] }}
+    machineType: {{ properties['machineType'] }}
+    lensesLicense: '{{ properties["lensesLicense"] }}'
+    lensesSecurityGroups: |
+        [
+          {"name": "adminGroup", "roles": ["Admin", "DataPolicyWrite", "AlertsWrite", "TableStorageWrite"]},
+          {"name": "readGroup",  "roles": ["Read"]}
+        ]      
+    lensesSecurityUsers: |
+        [
+          {"username": "admin", "password": "{{ properties['lensesPassword'] }}", "displayname": "Lenses Admin", "groups": ["adminGroup"]},
+          {"username": "read", "password": "read", "displayname": "Read Only", "groups": ["readGroup"]}
+        ]
+    
+    dockerEnv:
+      LENSES_PORT: {{ properties['lensesPort'] }}
+      LENSES_SECURITY_MODE: BASIC
+      LENSES_KAFKA_BROKERS: '{{ properties['kafkaBrokers'] }}'
+      LENSES_ZOOKEEPER_HOSTS: '{{ properties['zookeeper'] }}'
+      LENSES_SCHEMA_REGISTRY_URLS: '{{ properties['schemaRegistry'] }}'
+      LENSES_CONNECT_CLUSTERS: '{{ properties['connect'] }}'
+
+      SD_CONFIG: provider=gce zone_pattern={{ properties['zone'] }}.*
+      SD_BROKER_FILTER: tag_value=broker
+      SD_ZOOKEEPER_FILTER: tag_value=zookeeper
+      SD_ZOOKEEPER_JMX_PORT: 9585
+      SD_REGISTRY_FILTER: tag_value=schema-registry
+      SD_REGISTRY_JMX_PORT: 9582
+      SD_CONNECT_FILTERS: tag_value=connect-worker-testing,tag_value=connect-worker-production
+      SD_CONNECT_NAMES: testing,production
+      SD_CONNECT_STATUSES: connect-statuses-testing,connect-statuses-production
+      SD_CONNECT_CONFIGS: connect-configs-testing,connect-configs-production
+      SD_CONNECT_OFFSETS: connect-offsets-testing,connect-offsets-production
+      SD_CONNECT_JMX_PORTS: 9584

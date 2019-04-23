@@ -1,0 +1,71 @@
+info:
+  title: Container Instance Template
+  author: Google
+  description: Create container instance templates
+  version: 1.0
+
+imports:
+- path: container_helper.jinja
+
+required:
+- port
+- dockerImage
+- containerImage
+- lensesLicense
+- lensesSecurityUsers
+- lensesSecurityGroups
+
+properties:
+  lensesLicense:
+    type: string
+    description: The Lenses.io License
+  
+  lensesSecurityUsers:
+    type: string
+    description: The Lenses.io License
+  
+  lensesSecurityGroups:
+    type: string
+    description: The Lenses.io License
+  
+  zone:
+    type: string
+    description: The zone which Lenses.io will run
+    default: europe-west3-a
+
+  port:
+    type: integer
+    description: The host port and container port
+
+  dockerImage:
+    type: string
+    description: The docker image to be used
+
+  dockerEnv:
+    type: object
+    description: The container environment variables
+    default: {}
+
+  containerImage:
+    type: string
+    description: The container image to be used
+
+  network:
+    type: string
+    description: The network to deploy Lenses.io
+
+  diskSizeGB:
+    type: integer
+    default: 20
+
+  diskType:
+    type: string
+    default: pd-standard
+    enum:
+    - pd-standard
+    - pd-ssd
+
+outputs:
+  instanceTemplateSelfLink:
+    type: string
+    description: The selflink of this instance template

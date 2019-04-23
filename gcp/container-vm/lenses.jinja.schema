@@ -1,0 +1,67 @@
+info:
+  title: VM Template
+  author: Lenses.io
+  description: Creates a instance
+  version: 1.0
+
+imports:
+- path: ../common/container_instance_template.jinja
+  name: container_instance_template.jinja
+
+required:
+- zone
+- machineType
+- sourceRanges
+- kafkaBrokers
+- lensesLicense
+
+properties:
+  zone:
+    type: string
+    description: Zone where the instance resides
+    default: europe-west3-a
+  
+  machineType:
+    type: string
+    description: The type of the machine which lenses run. Recommended >= n1-standard-2
+    default: n1-standard-2
+  
+  network:
+    type: string
+    description: The network in which Lenses.io will be deployed
+    default: default
+
+  sourceRanges:
+    type: string
+    description: Source ranges for Firewall configuration
+    default: 0.0.0.0/0
+
+  lensesPort:
+    type: integer
+    description: The port which Lenses.io will run
+    default: 9991
+  
+  lensesLicense:
+    type: string
+    description: The Lenses.io License
+  
+  lensesPassword:
+    type: string
+    description: The password which will be used for Lenses.io to login
+    default: admin
+
+  kafkaBrokers:
+    type: string
+    description: The kafka connections string.
+
+  zookeeper:
+    type: string
+    description: The Zookeeper connection string (JSON)
+
+  schemaRegistry:
+    type: string
+    description: The Schema Registry connection string (JSON)
+
+  connect:
+    type: string
+    description: The Connect connection string (JSON)
