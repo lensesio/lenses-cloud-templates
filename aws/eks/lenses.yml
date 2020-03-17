@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Deploy Lenses on EKS"
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Lenses Fields (Required)
+        Parameters:
+          - LensesLicense
+          - LensesAdminUsername
+          - LensesAdminPassword
+      - Label:
+          default: Infrastructure  (Required)
+        Parameters: 
+          - KubeClusterName
+          - KafkaClusterName
+      - Label:
+          default: Storage  (Required)
+        Parameters: 
+          - S3Bucket
+          - S3BucketPrefix
+      - Label:
+          default: Lambda Role (Required)
+        Parameters:
+          - LambdaRole
+    ParameterLabels:
+      LensesLicense:
+        default: License (JSON)
+      LensesAdminUsername:
+        default: Lenses Admin Username
+      LensesAdminPassword:
+        default: Admin password (Note the password somewhere.)
+      KubeClusterName:
+        default: EKS Cluster Name
+      KafkaClusterName:
+        default: MSK Cluster Name
+      S3Bucket:
+        default: S3 Bucket Name
+      S3BucketPrefix:
+        default: S3 Bucket Prefix
+      LambdaRole:
+        default: Lambda role for deploying Lenses on EKS with MKS Backend
+Parameters:
+  KubeClusterName:
+    Type: String
+    Description: EKS cluster name
+  S3Bucket:
+    Type: String
+    Description: S3 Bucket name that hosts the lambdas
+    Default: "lenses-templates"
+  S3BucketPrefix:
+    Description: S3 Bucket prefix localtion for the lambdas
+    Type: String
+    Default: "eks/3.0.8"
+  KafkaClusterName:
+    Description: Name of the MSK Cluster. This is only the name, not ARN. The ARN value will be derieved automatically.
+    Type: String
+  LensesLicense:
+    Type: String
+    Description: You can get a license here https://lenses.io/downloads/lenses-enterprise/. Please use the JSON file here.
+    NoEcho: "true"
+  LensesAdminUsername:
+    Type: String
+    Description: Admin username for Lenses
+    Default: "admin"
+  LensesAdminPassword:
+    Type: String
+    Description: Admin password
+    NoEcho: "true"
+  LambdaRole:
+    Type: String
+    Description: Role that allows Lambda service to access Logs, Manage EKS, access MKS (Describe, List, Get Endpoints)
+Resources:
+  LambdaEKSConfig:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Dev Lambda
+      Handler: lambdas.lambda_handler
+      Runtime: python3.7
+      Role: !Ref LambdaRole
+      MemorySize: 128
+      Timeout: 900
+      Code:
+        S3Bucket: !Ref S3Bucket
+        S3Key:  !Sub '${S3BucketPrefix}/lambdas.zip'
+
+  LambdaInvoce:
+    Type: Custom::LambdaEKSConfigure
+    Properties:
+      ServiceToken: !GetAtt LambdaEKSConfig.Arn
+      ClusterName: !Ref KubeClusterName
+      LensesLicense: !Ref LensesLicense
+      KafkaClusterName: !Ref KafkaClusterName
+      LensesAdminUsername: !Ref LensesAdminUsername
+      LensesAdminPassword: !Ref LensesAdminPassword
+
+Outputs:
+  LambdaEKSConfigErrorInfo: 
+    Value: !GetAtt LambdaInvoce.ErrorInfo
+    Description: Get error info, if any
+  LensesURL: 
+    Value: !GetAtt LambdaInvoce.LensesEndpoint
+    Description: Lenses Endpoint
+
+
