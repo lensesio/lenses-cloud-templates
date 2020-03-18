@@ -213,7 +213,7 @@ Resources:
       ContainerDefinitions:
         - Name: lenses
           Essential: true
-          Image: landoop/lenses:2.3
+          Image: lensesio/lenses:3.0
           Cpu: !Ref 'ContainerCpu'
           Memory: !Ref 'ContainerMemory'
           Environment:

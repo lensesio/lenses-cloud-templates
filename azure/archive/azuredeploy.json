@@ -302,7 +302,7 @@
         "typeHandlerVersion": "2.0",
         "autoUpgradeMinorVersion": true,
         "protectedSettings": {
-          "fileUris": ["https://archive.landoop.com/repository/cloud/azure/vm/2.3/configure.sh"],
+          "fileUris": ["https://archive.landoop.com/repository/cloud/azure/vm/3.0/configure.sh"],
           "commandToExecute": "[concat('./configure.sh  -l ', variables('singleQuote'), parameters('lensesLicense'), variables('singleQuote'), ' -z ', variables('singleQuote'), parameters('zookeeper'), variables('singleQuote'), ' -b ',  variables('singleQuote'), parameters('kafkaBrokers'), variables('singleQuote'), ' -s ', variables('singleQuote'), parameters('schemaRegistry'), variables('singleQuote'), ' -c ', variables('singleQuote'), parameters('connect'), variables('singleQuote'))]"
         }
       }
