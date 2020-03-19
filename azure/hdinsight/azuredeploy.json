@@ -88,7 +88,7 @@
         "installScriptActions": [
           {
             "name": "[concat(variables('applicationName'), '-', uniquestring('applicationName'))]",
-            "uri": "https://archive.landoop.com/repository/cloud/azure/hdinsight/2.3/configure.sh",
+            "uri": "https://archive.landoop.com/repository/cloud/azure/hdinsight/3.0/configure.sh",
             "parameters": "[concat('-n ', parameters('clusterName'), ' -l ', variables('singleQuote'), parameters('licenseKey'), variables('singleQuote'))]",
             "roles": [
               "edgenode"
