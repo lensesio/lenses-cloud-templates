@@ -1,4 +1,4 @@
-#/usr/bin/env python3
+#!/usr/bin/env python3
 
 # KubeConfig Manifest
 kubeconfig = """apiVersion: v1

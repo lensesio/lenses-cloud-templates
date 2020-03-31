@@ -1,10 +1,22 @@
 # Deploy Lenses on EKS with MSK
 
-In this blog we will describe how to deploy Lenses on EKS that uses MSK as Kafka backend. 
+We will describe how to deploy Lenses on EKS that uses MSK as Kafka backend. 
 We will go through the infrastracture requirements before deploying Lenses. We will talk 
 about VPC, EKS Cluster, EKS Workers, MSK.
 
 ## Requirements
+
+Below we list the system requirements for the case of updating the lambdas modules and uploading them to S3, 
+and the infrastructure requirements fot the CFT deployment.
+
+### System requerements for creating lambas modules
+
+- make
+- zip
+- awscli
+- pip3
+
+### Infrastructure requirements
 
 The cloudformation template that deploys Lenses in EKS, expects that you have configured 
 an EKS cluster, an MKS cluster and the appropriate roles that are required by Lambdas to 

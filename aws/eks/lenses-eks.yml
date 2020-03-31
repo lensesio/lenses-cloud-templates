@@ -1,0 +1,209 @@
+Description: "Deploy Lenses on EKS"
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Lenses Fields (Required)
+        Parameters:
+          - LensesLicense
+          - LensesAdminPassword
+      - Label:
+          default: Infrastructure  (Required)
+        Parameters: 
+          - KubeClusterName
+          - KafkaClusterName
+      - Label:
+          default: Storage  (Required)
+        Parameters: 
+          - S3Bucket
+          - S3BucketPrefix
+      - Label:
+          default: Lambda Role (Required)
+        Parameters:
+          - LambdaRole
+    ParameterLabels:
+      LensesLicense:
+        default: License (JSON)
+      LensesAdminPassword:
+        default: Admin password (Note the password somewhere.)
+      KubeClusterName:
+        default: EKS Cluster Name
+      KafkaClusterName:
+        default: MSK Cluster Name
+      S3Bucket:
+        default: S3 Bucket Name
+      S3BucketPrefix:
+        default: S3 Bucket Prefix
+      LambdaRole:
+        default: Lambda role for deploying Lenses on EKS with MKS Backend
+Parameters:
+  KubeClusterName:
+    Type: String
+    Description: EKS cluster name
+  S3Bucket:
+    Type: String
+    Description: S3 Bucket name that hosts the lambdas
+    Default: "lenses-templates"
+  S3BucketPrefix:
+    Description: S3 Bucket prefix localtion for the lambdas
+    Type: String
+    Default: "eks/3.0.8"
+  KafkaClusterName:
+    Description: Name of the MSK Cluster. This is only the name, not ARN. The ARN value will be derieved automatically.
+    Type: String
+  LensesLicense:
+    Type: String
+    Description: You can get a license here https://lenses.io/downloads/lenses-enterprise/. Please use the JSON file here.
+    NoEcho: "true"
+  LensesAdminPassword:
+    Type: String
+    Description: Admin password
+    NoEcho: "true"
+  LambdaRole:
+    Type: String
+    Description: Role that allows Lambda service to access Logs, Manage EKS, access MKS (Describe, List, Get Endpoints)
+Resources:
+  LambdaCopyZipRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3BucketPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: '*'
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                - 'logs:CreateLogGroup'
+                - 'logs:CreateLogStream'
+                - 'logs:PutLogEvents'
+              Resource: '*'
+
+  LambdaZipsBucket:
+      Type: AWS::S3::Bucket
+
+  CopyZips:
+      Type: Custom::CopyZips
+      Properties:
+        ServiceToken: !GetAtt 'CopyZipsFunction.Arn'
+        DestBucket: !Ref 'LambdaZipsBucket'
+        SourceBucket: !Ref 'S3Bucket'
+        Prefix: !Ref 'S3BucketPrefix'
+        Objects:
+          - lambdas.zip
+
+  CopyZipsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Copies objects from a source S3 bucket to a destination
+      Handler: index.handler
+      Runtime: python3.7
+      Role: !GetAtt LambdaCopyZipRole.Arn
+      Timeout: 300
+      Code:
+        ZipFile: |
+          import cfnresponse
+          import logging
+          import boto3
+
+          logger = logging.getLogger(__name__)
+
+          def set_log(log_type, log_message): 
+            getattr(logger, log_type)(log_message)
+
+          def check_paths(*args): 
+              path='' 
+              for i in args: 
+                  if not i.endswith('/'): 
+                      path = path + i + '/'
+                      continue
+
+                  path = path + i
+                       
+              return path
+
+          def copy_objects(source_bucket, dest_bucket, prefix, objects):
+              prefix = check_paths(prefix)
+              s3 = boto3.client('s3')
+              for o in objects:
+                  key = prefix + o
+                  copy_source = {'Bucket': source_bucket, 'Key': key}
+                  s3.copy_object(
+                    CopySource=copy_source,
+                    Bucket=dest_bucket,
+                    Key=key
+                  )
+
+          def delete_objects(bucket, prefix, objects):
+              prefix = check_paths(prefix)
+              s3 = boto3.client('s3')
+              objects = {'Objects': [{'Key': prefix + o} for o in objects]}
+              s3.delete_objects(Bucket=bucket, Delete=objects)
+
+          def handler(event, context):
+              logger.debug(event)
+              status = cfnresponse.SUCCESS
+              try:
+                  if event['RequestType'] == 'Delete':
+                      delete_objects(
+                        event['ResourceProperties']['DestBucket'],
+                        event['ResourceProperties']['Prefix'],
+                        event['ResourceProperties']['Objects']
+                      )
+                  else:
+                      copy_objects(
+                        event['ResourceProperties']['SourceBucket'],
+                        event['ResourceProperties']['DestBucket'],
+                        event['ResourceProperties']['Prefix'],
+                        event['ResourceProperties']['Objects']
+                      )
+              except Exception:
+                  status = cfnresponse.FAILED
+              finally:
+                  cfnresponse.send(event, context, status, {}, None)
+
+  LambdaEKSConfig:
+    DependsOn: CopyZips
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Dev Lambda
+      Handler: lambdas.lambda_handler
+      Runtime: python3.7
+      Role: !Ref LambdaRole
+      MemorySize: 128
+      Timeout: 900
+      Code:
+        S3Bucket: !Ref LambdaZipsBucket
+        S3Key:  !Sub '${S3BucketPrefix}/lambdas.zip'
+
+  LambdaInvoce:
+    Type: Custom::LambdaEKSConfigure
+    Properties:
+      ServiceToken: !GetAtt LambdaEKSConfig.Arn
+      ClusterName: !Ref KubeClusterName
+      LensesLicense: !Ref LensesLicense
+      KafkaClusterName: !Ref KafkaClusterName
+      LensesAdminPassword: !Ref LensesAdminPassword
+
+Outputs:
+  LambdaEKSConfigErrorInfo: 
+    Value: !GetAtt LambdaInvoce.ErrorInfo
+    Description: Get error info, if any
+  LensesURL: 
+    Value: !GetAtt LambdaInvoce.LensesEndpoint
+    Description: Lenses Endpoint
+
+
