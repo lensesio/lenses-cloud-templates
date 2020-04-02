@@ -179,11 +179,14 @@ Add the following policies
       AmazonEKSClusterPolicy
       AmazonEKSServicePolicy
       AmazonEKSWorkerNodePolicy
+      AmazonMSKReadOnlyAccess
 
     Inline policy
       logs:CreateLogGroup
       logs:CreateLogStream
       logs:PutLogEvents
+
+NOTE: You can use the `role.yml` Cloudformation template to create the role automatically
 
 After creating the role, you need to map it explicity into the EKS cluster **auth configmap** 
 because only the creator of EKS cluster has access by default to the cluster. 
