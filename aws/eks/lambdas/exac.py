@@ -1,6 +1,5 @@
-from os import getgid, getuid, seteuid, setegid, getcwd
-from sys import argv, exc_info, exit, stdout
-from subprocess import call, Popen, PIPE
+from os import getcwd, getuid
+from subprocess import Popen, PIPE
 import traceback
 import datetime
 import logging
@@ -8,10 +7,11 @@ import logging
 
 log_level = logging.INFO
 proc_log = logging.getLogger()
-proc_log= logging.basicConfig(
+proc_log = logging.basicConfig(
     level=log_level,
     format='%(levelname)s (%(threadName)-9s) %(message)s',
 )
+
 
 def exac(exec_opts, secret=False, **kwargs):
     '''
@@ -55,7 +55,7 @@ def exac(exec_opts, secret=False, **kwargs):
     )
 
     # Check the executing mode type: shell=True/False?
-    if exacval.get("shell") == False:
+    if exacval.get("shell") is False:
         try:
             assert isinstance(exec_opts, list)
         except AssertionError:
@@ -65,7 +65,7 @@ def exac(exec_opts, secret=False, **kwargs):
             )
 
         cmd = " ".join(exec_opts)
-    elif exacval.get("shell") == True:
+    elif exacval.get("shell") is True:
         if isinstance(exec_opts, list):
             return die(
                 exacval,
@@ -82,7 +82,7 @@ def exac(exec_opts, secret=False, **kwargs):
     # Verify that a command has been issued
     assert len(exec_opts) > 0
 
-    if secret == True:
+    if secret is True:
         exacval["Command"] = "***"
         cmd = "***"
     else:
@@ -143,7 +143,6 @@ def exac(exec_opts, secret=False, **kwargs):
         prc.stdout.close()
         prc.stderr.close()
         prc.terminate()
-        rt = exacval["ExitCode"]
 
         return exacval
 
