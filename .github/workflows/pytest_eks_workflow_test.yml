@@ -20,7 +20,10 @@ jobs:
         run: pip install pytest flake8 awscli
       - name: Install dependencies
         run: |
+          cd ./aws/eks/
           python -m pip install --upgrade pip
           pip install -r lambdas/requirements.txt
       - name: Run Tests
-        run: make test
+        run: |
+          cd ./aws/eks/
+          make test
