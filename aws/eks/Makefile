@@ -8,6 +8,7 @@ KafkaClusterName?=vdev-kafka-cluster
 LensesLicense?=test
 PROFILE?=default
 
+PROJECT = lambdas
 
 .PHONY: inst_deps
 inst_deps:
@@ -63,4 +64,42 @@ s3: zip
 .PHONY: update_lambda
 update_lambda: zip
 	@aws lambda update-function-code --function-name dev-LambdaEKSConfig-NNN --zip-file fileb://lambdas.zip
+
+mkvirtenv:
+	@if [ ! -e venv ]; then \
+			python3 -m virtualenv -p $(shell which python3) venv; \
+			. venv/bin/activate ;\
+			./venv/bin/pip3 install -U pytest flake8 awscli; \
+			./venv/bin/pip3 install -Ur lambdas/requirements.txt; \
+	fi
+
+rmvirtenv:
+	@if command -v deactivate; then \
+			deactivate; \
+	fi
+
+	@rm -rf venv
+
+virtenv: mkvirtenv
+	@. venv/bin/activate ;
+	@pip -V
+
+pep8: virtenv
+	@. venv/bin/activate ; flake8 lambdas/lambdas.py \
+		lambdas/backend_config.py \
+		lambdas/eks_config.py \
+		lambdas/exac.py \
+		lambdas/manifests.py \
+		lambdas/setup_lenses.py \
+		--count --select=E9,F63,F7,F82 --show-source --statistic
+	@. venv/bin/activate ; flake8 lambdas/lambdas.py \
+		lambdas/backend_config.py \
+		lambdas/eks_config.py \
+		lambdas/exac.py \
+		lambdas/manifests.py \
+		lambdas/setup_lenses.py \
+	--count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+tests: virtenv
+	@. venv/bin/activate ; python3 -m pytest ./tests/
 

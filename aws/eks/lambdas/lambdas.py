@@ -11,6 +11,8 @@ from exac import exac
 import cfnresponse
 import traceback
 import logging
+import random
+import string
 import json
 
 
@@ -32,6 +34,7 @@ responseData = {
     "LensesService": None,
     "LensesServiceInfo": None,
     "LensesEndpoint": None,
+    "LensesPassword": None,
     "NodePort": None
 }
 
@@ -55,7 +58,7 @@ def die(event, context, err):
     cfnresponse.send(
         event,
         context,
-        cfnresponse.SUCCESS,
+        cfnresponse.FAILED,
         responseData
     )
 
@@ -122,15 +125,18 @@ def main_create(event, context):
             region_name
         )
 
-    # Export Lenses Admin and Password
+    # Generate adming credentials
     lenses_admin_username = "admin"
-    lenses_admin_password = event['ResourceProperties']['LensesAdminPassword']
+    lenses_admin_password = ''.join(
+        random.choice(string.ascii_letters) for i in range(32)
+    )
+    responseData["LensesPassword"] = lenses_admin_password
 
     try:
         lenses_license = event['ResourceProperties']['LensesLicense']
         if type(json.loads(lenses_license)) is not dict:
             exit(1)
-    except:
+    except json.JSONDecodeError:
         errInfo = exc_info()
         die(
             event,
