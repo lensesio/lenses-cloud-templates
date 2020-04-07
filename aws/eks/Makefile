@@ -4,10 +4,11 @@ S3Bucket?=vdev-k8
 S3BucketPrefix?=functions
 S3BucketModulesPrefix?=modules
 AWS_DEFAULT_REGION?=eu-north-1
-KafkaClusterName?=vdev-kafka-cluster
+KafkaClusterName?=vdev-kafka
 LensesLicense?=test
 PROFILE?=default
 
+PROJECT=lambdas
 
 .PHONY: inst_deps
 inst_deps:
@@ -21,14 +22,15 @@ cloudformation: s3
 		--profile $(PROFILE) \
 		--stack-name $(STACK_NAME) \
 		--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
-		--template-body file://lenses.yml \
+		--template-body file://lenses-eks.yml \
 		--output text \
 		--parameters \
 			  ParameterKey=KubeClusterName,ParameterValue=$(KubeClusterName) \
 			  ParameterKey=S3Bucket,ParameterValue=$(S3Bucket) \
 			  ParameterKey=S3BucketPrefix,ParameterValue=$(S3BucketPrefix) \
 			  ParameterKey=KafkaClusterName,ParameterValue=$(KafkaClusterName) \
-			  ParameterKey=LensesLicense,ParameterValue=$(LensesLicense)
+			  ParameterKey=LensesLicense,ParameterValue=$(LensesLicense) \
+			  ParameterKey=LambdaRole,ParameterValue='arn:aws:iam::169480424863:role/vdev-lamda-stack-LambdaProvisioningRole-QZ7JU4W96283'
 
 
 .PHONY: update_cloudformation
@@ -37,7 +39,7 @@ update_cloudformation: s3
 		--profile $(PROFILE) \
 		--stack-name $(STACK_NAME) \
 		--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
-		--template-body file://lenses.yml \
+		--template-body file://lenses-eks.yml \
 		--parameters \
 			  ParameterKey=KubeClusterName,ParameterValue=$(KubeClusterName) \
 			  ParameterKey=S3Bucket,ParameterValue=$(S3Bucket) \
@@ -63,4 +65,27 @@ s3: zip
 .PHONY: update_lambda
 update_lambda: zip
 	@aws lambda update-function-code --function-name dev-LambdaEKSConfig-NNN --zip-file fileb://lambdas.zip
+
+mkvirtenv:
+	@if [ ! -e venv ]; then \
+			python3 -m virtualenv -p $(shell which python3) venv; \
+			. venv/bin/activate ;\
+			./venv/bin/pip3 install -U pytest flake8 awscli; \
+			./venv/bin/pip3 install -Ur lambdas/requirements.txt; \
+	fi
+
+rmvirtenv:
+	@if command -v deactivate; then \
+			deactivate; \
+	fi
+
+	@rm -rf venv
+
+virtenv: mkvirtenv
+	@. venv/bin/activate ;
+	@pip -V
+
+tests: virtenv
+	@. venv/bin/activate ; python3 -m pytest ./tests/
+
 

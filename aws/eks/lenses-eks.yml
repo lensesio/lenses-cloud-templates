@@ -6,7 +6,6 @@ Metadata:
           default: Lenses Fields (Required)
         Parameters:
           - LensesLicense
-          - LensesAdminPassword
       - Label:
           default: Infrastructure  (Required)
         Parameters: 
@@ -24,8 +23,6 @@ Metadata:
     ParameterLabels:
       LensesLicense:
         default: License (JSON)
-      LensesAdminPassword:
-        default: Admin password (Note the password somewhere.)
       KubeClusterName:
         default: EKS Cluster Name
       KafkaClusterName:
@@ -54,10 +51,6 @@ Parameters:
   LensesLicense:
     Type: String
     Description: You can get a license here https://lenses.io/downloads/lenses-enterprise/. Please use the JSON file here.
-    NoEcho: "true"
-  LensesAdminPassword:
-    Type: String
-    Description: Admin password
     NoEcho: "true"
   LambdaRole:
     Type: String
@@ -196,7 +189,6 @@ Resources:
       ClusterName: !Ref KubeClusterName
       LensesLicense: !Ref LensesLicense
       KafkaClusterName: !Ref KafkaClusterName
-      LensesAdminPassword: !Ref LensesAdminPassword
 
 Outputs:
   LambdaEKSConfigErrorInfo: 
@@ -205,5 +197,7 @@ Outputs:
   LensesURL: 
     Value: !GetAtt LambdaInvoce.LensesEndpoint
     Description: Lenses Endpoint
-
+  LensesAdminPassword:
+    Value: !GetAtt LambdaInvoce.LensesPassword
+    Description: Lenses Password
 
