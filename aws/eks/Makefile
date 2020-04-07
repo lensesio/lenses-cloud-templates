@@ -6,8 +6,8 @@ S3BucketModulesPrefix?=modules
 AWS_DEFAULT_REGION?=eu-north-1
 KafkaClusterName?=vdev-kafka
 LensesLicense?=test
+LambdaRole?=roleArn
 PROFILE?=default
-
 PROJECT=lambdas
 
 .PHONY: inst_deps
@@ -30,7 +30,7 @@ cloudformation: s3
 			  ParameterKey=S3BucketPrefix,ParameterValue=$(S3BucketPrefix) \
 			  ParameterKey=KafkaClusterName,ParameterValue=$(KafkaClusterName) \
 			  ParameterKey=LensesLicense,ParameterValue=$(LensesLicense) \
-			  ParameterKey=LambdaRole,ParameterValue='arn:aws:iam::169480424863:role/vdev-lamda-stack-LambdaProvisioningRole-QZ7JU4W96283'
+			  ParameterKey=LambdaRole,ParameterValue=$(LambdaRole)
 
 
 .PHONY: update_cloudformation
