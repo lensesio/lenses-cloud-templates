@@ -1,4 +1,4 @@
-name: Tox Workflow Tests
+name: Pytests Workflow Tests
 
 on: [push]
 
@@ -26,4 +26,4 @@ jobs:
       - name: Run Tests
         run: |
           cd ./aws/eks/
-          make test
+          python3 -m pytest ./tests/
