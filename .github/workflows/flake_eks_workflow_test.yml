@@ -16,5 +16,6 @@ jobs:
     - name: Run PEP8 Tests
       run: |
         cd ./aws/eks/
-        make virtenv
+        python -m pip install --upgrade pip virtualenv
         make pep8
+  
