@@ -8,10 +8,6 @@ KafkaClusterName?=vdev-kafka
 LensesLicense?=test
 LambdaRole?=roleArn
 PROFILE?=default
-<<<<<<< HEAD
-=======
-
->>>>>>> fc0f2f6... github actions workflows
 PROJECT=lambdas
 
 .PHONY: inst_deps
