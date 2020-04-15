@@ -64,7 +64,7 @@ s3: zip
 
 .PHONY: update_lambda
 update_lambda: zip
-	@aws lambda update-function-code --function-name dev-LambdaEKSConfig-NNN --zip-file fileb://lambdas.zip
+	@aws lambda update-function-code --function-name dev-LambdaEKSConfig-QV3X467LK6WZ --zip-file fileb://lambdas.zip
 
 mkvirtenv:
 	@if [ ! -e venv ]; then \

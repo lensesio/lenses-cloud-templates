@@ -32,22 +32,22 @@ lenses_deployment_manifest = """
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: lenses
+  name: {lenses}
 spec:
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: lenses
+      app: {lenses}
   replicas: 1
   template:
     metadata:
       labels:
-        app: lenses
+        app: {lenses}
     spec:
       containers:
-      - name: lenses
-        image:  lensesio/lenses:latest
+      - name: {lenses}
+        image:  lensesio/lenses:3.1
         imagePullPolicy:  IfNotPresent
         lifecycle:
           postStart:
@@ -93,10 +93,10 @@ lenses_service_manifest = """
 apiVersion: v1
 kind: Service
 metadata:
-  name: "lenses-service"
+  name: "{lenses}-service"
 spec:
   selector:
-    app: lenses
+    app: {lenses}
   type: LoadBalancer
   ports:
   - protocol: TCP

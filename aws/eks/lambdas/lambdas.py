@@ -48,53 +48,14 @@ proc_log = logging.basicConfig(
 # Simple function that converts all errors to str,
 # updates ErrorInfo key of responseData and stops
 # the script's execution
-def die(event, context, err):
+def die(err):
     """
         Die function for CF handler.
     """
-
+    print(err)
     responseData['ErrorInfo'] = str(err)
-
-    cfnresponse.send(
-        event,
-        context,
-        cfnresponse.SUCCESS,
-        responseData
-    )
-
     exit(1)
 
-
-# Convert a bytes to to str
-def consume_rawstring(st):
-    """
-        Consume a raw string by decoding and parsing \n as
-        new lines
-
-        :param st: b"string 1\nstring 2\n...string N\n"
-        :type st: byte
-
-        :return: ["string 1", "string 2", ..., "string N"]
-    """
-
-    return st.strip().decode('utf-8').splitlines()
-
-
-# Print a queue of messages.
-def print_consumed_strings(mqs):
-    """
-        Print a list of strings. This function calls
-        consume_rawstring and then prints the list
-
-        :param st: b"string 1\nstring 2\n...string N\n"
-        :type st: byte
-    """
-
-    print(2*'\n')
-    for msg in consume_rawstring(mqs):
-        print(msg)
-    else:
-        print(2*'\n')
 
 def main_create(event, context):
     '''
@@ -106,6 +67,12 @@ def main_create(event, context):
         :param context: Context sent from lambda_handler
         :type context: JSON
     '''
+
+    print(event)
+    deployment_name = "eks-lenses-{d}".format(
+        d=event['StackId'].split('/')[-1]
+    )
+
     print("Configuring kubectl")
     (
         region_name,
@@ -117,34 +84,23 @@ def main_create(event, context):
         context=context,
         responseData=responseData
     )
-
     if err != 0:
-        die(
-            event,
-            context,
-            region_name
-        )
-
+        die(region_name)
 
     # Generate adming credentials
     lenses_admin_username = "admin"
-    lenses_admin_password = event['ResourceProperties']['LensesAdminPassword']
     lenses_admin_password = ''.join(
         random.choice(string.ascii_letters) for i in range(32)
     )
     responseData["LensesPassword"] = lenses_admin_password
 
+    # Get Lenses license
     try:
         lenses_license = event['ResourceProperties']['LensesLicense']
         if type(json.loads(lenses_license)) is not dict:
-            exit(1)
+            die("License is not a valid json")
     except json.JSONDecodeError:
-        errInfo = exc_info()
-        die(
-            event,
-            context,
-            errInfo
-        )
+        die(exc_info())
 
     # Export kube and helm paths to environment path
     old_path = environ["PATH"]
@@ -161,11 +117,8 @@ def main_create(event, context):
         responseData['KubeCheck'] = check_kubectl_access[
             'stderr'
         ].strip().decode('utf-8')
-        die(
-            event,
-            context,
-            check_kubectl_access['stderr'].strip().decode('utf-8')
-        )
+
+        die(check_kubectl_access['stderr'].strip().decode('utf-8'))
 
     responseData['KubeCheck'] = "Kubectl configured successfully!"
 
@@ -183,11 +136,7 @@ def main_create(event, context):
         err
     ) = kafka_endpoints.GetBackendInfo()
     if err != 0:
-        die(
-            event,
-            context,
-            brokers
-        )
+        die(brokers)
 
     responseData['KafkaBrokers'] = str(brokers)
     responseData['KafkaZookeepers'] = str(zookeepers)
@@ -199,11 +148,7 @@ def main_create(event, context):
         secret=lenses_license
     )
     if err != 0:
-        die(
-            event,
-            context,
-            create_license
-        )
+        die(create_license)
 
     # Generate lenses deployment manifest
     lenses_manifest, err = configure_lenses.CreateLensesManifest(
@@ -211,21 +156,18 @@ def main_create(event, context):
         zookeepers=zookeepers,
         username=lenses_admin_username,
         password=lenses_admin_password,
+        deployment_name=deployment_name,
         kafka_metrics_opts=kafka_metrics_opts
     )
     if err != 0:
-        die(
-            event,
-            context,
-            lenses_manifest
-        )
+        die(lenses_manifest)
 
     responseData['LensesManifest'] = "Manifest created successfully"
 
     # Create the deployment of Lenses. Die otherwise
     print("Checking if Lenses deployment exits")
     podexists = exac(
-        "kubectl get pods -n default | grep -iq lenses",
+        "kubectl get pods -n default | grep -iq %s" % deployment_name,
         shell=True
     )
     if podexists['ExitCode'] != 0:
@@ -235,11 +177,7 @@ def main_create(event, context):
             shell=True
         )
         if deploy_lenses['ExitCode'] != 0:
-            die(
-                event,
-                context,
-                deploy_lenses['stderr'].strip().decode('utf-8')
-            )
+            die(deploy_lenses['stderr'].strip().decode('utf-8'))
 
         responseData['LensesDeployment'] = deploy_lenses[
             'stdout'
@@ -252,7 +190,7 @@ def main_create(event, context):
     # Create Lenses Loadbalancer Service. Die otherwise
     print("Checking if Lenses service exits")
     svcexists = exac(
-        "kubectl get svc -n default | grep -iq 'lenses-service'",
+        "kubectl get svc -n default | grep -iq '%s-service'" % deployment_name,
         shell=True
     )
     if svcexists['ExitCode'] != 0:
@@ -262,11 +200,7 @@ def main_create(event, context):
             shell=True
         )
         if deploy_svc['ExitCode'] != 0:
-            die(
-                event,
-                context,
-                deploy_svc['stderr'].strip().decode('utf-8')
-            )
+            die(deploy_svc['stderr'].strip().decode('utf-8'))
 
         responseData['LensesService'] = deploy_svc[
             'stdout'
@@ -282,17 +216,15 @@ def main_create(event, context):
     print("Checking for Lenses endpoint")
     for t in range(10):
         serviceInfo = exac(
-            "kubectl get service/lenses-service | tail -n 1 | column -t",
+            "kubectl get service/{sname}-service | tail -n 1 | column -t".format(
+                sname=deployment_name
+            ),
             shell=True
         )
         if serviceInfo['stderr'].strip().decode('utf-8') != '':
             responseData['LensesServiceInfo'] = "Unable to get service info"
             responseData['LensesEndpoint'] = "Unable to get endpoint"
-            die(
-                event,
-                context,
-                serviceInfo['stderr'].strip().decode('utf-8')
-            )
+            die(serviceInfo['stderr'].strip().decode('utf-8'))
 
         responseData['LensesServiceInfo'] = serviceInfo['stdout'].strip().decode('utf-8')
         print(responseData['LensesServiceInfo'])
@@ -332,6 +264,11 @@ def main_del(event, context):
         :param context: Context sent from lambda_handler
         :type context: JSON
     '''
+
+    deployment_name = "eks-lenses-{d}".format(
+        d=event['StackId'].split('/')[-1]
+    )
+
     (
         region_name,
         cluster_name,
@@ -339,11 +276,7 @@ def main_del(event, context):
         err
     ) = config_eks_access(event=event, context=context, responseData=responseData)
     if err != 0:
-        die(
-            event,
-            context,
-            region_name
-        )
+        die(region_name)
 
     # Export kube and helm paths to environment path
     old_path = environ["PATH"]
@@ -353,40 +286,34 @@ def main_del(event, context):
    # Check if Lenses deployment exists. Delete in case it does
     print("Checking if Lenses deployment exists")
     podexists = exac(
-        "kubectl get deployment lenses -n default | grep -iq lenses",
+        "kubectl get deployment %s -n default | grep -iq lenses" % deployment_name,
         shell=True
     )
     if podexists['ExitCode'] == 0:
         print("Deleting Lenses deployment")
         deploy_lenses = exac(
-            "kubectl delete deployment lenses",
+            "kubectl delete deployment %s" % deployment_name,
             shell=True
         )
         if deploy_lenses['ExitCode'] != 0:
-            die(
-                event,
-                context,
-                deploy_lenses['stderr'].strip().decode('utf-8')
-            )
+            die(deploy_lenses['stderr'].strip().decode('utf-8'))
 
     # Delete Lenses LB Service in case it exists
     print("Checking if Lenses service exists")
     svcexists = exac(
-        "kubectl get svc lenses-service -n default | grep -iq 'lenses-service'",
+        "kubectl get svc %s-service -n default | grep -iq '%s-service'" % (
+            deployment_name, deployment_name
+        ),
         shell=True
     )
     if svcexists['ExitCode'] == 0:
         print("Deleting Lenses service")
         delete_svc = exac(
-            "kubectl delete svc lenses-service",
+            "kubectl delete svc %s-service" % deployment_name,
             shell=True
         )
         if delete_svc['ExitCode'] != 0:
-            die(
-                event,
-                context,
-                delete_svc['stderr'].strip().decode('utf-8')
-            )
+            die(delete_svc['stderr'].strip().decode('utf-8'))
 
     # Check if license secret exists. In case it does exists, delete
     print("Checking if secret license exists")
@@ -402,11 +329,7 @@ def main_del(event, context):
             shell=True
         )
         if delete_lenses_secret['ExitCode'] != 0:
-            die(
-                event,
-                context,
-                delete_lenses_secret['stderr'].strip().decode('utf-8')
-            )
+            die(delete_lenses_secret['stderr'].strip().decode('utf-8'))
 
     # Same check and action if true as the secret license from above,
     # but for turststore.
@@ -423,11 +346,7 @@ def main_del(event, context):
             shell=True
         )
         if delete_truststore['ExitCode'] != 0:
-            die(
-                event,
-                context,
-                delete_truststore['stderr'].strip().decode('utf-8')
-            )
+            die(delete_truststore['stderr'].strip().decode('utf-8'))
 
     # Finally send back to CF that the deletion has been completed successfully.
     cfnresponse.send(
@@ -462,21 +381,24 @@ def lambda_handler(event, context):
                 context=context
             )
         else:
-            die(
+            responseData['ErrorInfo'] = "Recieved unsupported event: %s. Exiting..." % (
+                    event['RequestType']
+            )
+
+            cfnresponse.send(
                 event,
                 context,
-                "Recieved unsupported event: %s. Exiting..." % (
-                    event['RequestType']
-                )
+                cfnresponse.FAILED,
+                responseData
             )
-    except SystemExit:
-        pass
     except:
         errInfo = exc_info()
         traceback.print_exc()
 
-        die(
+        responseData['ErrorInfo'] = str(errInfo)
+        cfnresponse.send(
             event,
             context,
-            errInfo
+            cfnresponse.FAILED,
+            responseData
         )
