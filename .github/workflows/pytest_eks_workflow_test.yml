@@ -21,9 +21,5 @@ jobs:
       - name: Install dependencies
         run: |
           cd ./aws/eks/
-          python -m pip install --upgrade pip
-          pip install -r lambdas/requirements.txt
-      - name: Run Tests
-        run: |
-          cd ./aws/eks/
-          python3 -m pytest ./tests/
+          python -m pip install --upgrade pip virtualenv
+          make tests
