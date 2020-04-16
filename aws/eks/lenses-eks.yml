@@ -6,7 +6,6 @@ Metadata:
           default: Lenses Fields (Required)
         Parameters:
           - LensesLicense
-          - LensesVersion
       - Label:
           default: Infrastructure  (Required)
         Parameters: 
@@ -34,8 +33,6 @@ Metadata:
         default: S3 Bucket Prefix
       LambdaRole:
         default: Lambda role for deploying Lenses on EKS with MKS Backend
-      LensesVersion:
-        default: Lenses version
 Parameters:
   KubeClusterName:
     Type: String
@@ -57,11 +54,8 @@ Parameters:
     NoEcho: "true"
   LambdaRole:
     Type: String
-    Description: Role that allows Lambda service to access Logs, Manage EKS, access MKS (Describe, List, Get Endpoints)
-  LensesVersion:
-    Description: Version of Lenses
-    Type: String
-    Default: "3.1"
+    Description: Name of the Role that allows Lambda service to access Logs, Manage EKS, access MKS (Describe, List, Get Endpoints)
+
 Resources:
   LambdaCopyZipRole:
     Type: AWS::IAM::Role
@@ -182,7 +176,7 @@ Resources:
       Description: Dev Lambda
       Handler: lambdas.lambda_handler
       Runtime: python3.7
-      Role: !Ref LambdaRole
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/${LambdaRole}
       MemorySize: 128
       Timeout: 900
       Code:
@@ -196,7 +190,6 @@ Resources:
       ClusterName: !Ref KubeClusterName
       LensesLicense: !Ref LensesLicense
       KafkaClusterName: !Ref KafkaClusterName
-      LensesVersion: !Ref LensesVersion
 
 Outputs:
   LambdaEKSConfigErrorInfo: 

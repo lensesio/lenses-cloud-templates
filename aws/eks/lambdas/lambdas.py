@@ -93,7 +93,7 @@ def main_create(event, context):
         random.choice(string.ascii_letters) for i in range(32)
     )
     responseData["LensesPassword"] = lenses_admin_password
-    lenses_version = event['LensesVersion']
+    lenses_version = "3.1"
     cver = len(lenses_version.split('.')) <=3 and len(lenses_version.split('.')) >=2
     try:
         for c in lenses_version.split('.'):
