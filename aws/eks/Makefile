@@ -85,7 +85,22 @@ virtenv: mkvirtenv
 	@. venv/bin/activate ;
 	@pip -V
 
+pep8: virtenv
+	@. venv/bin/activate ; flake8 lambdas/lambdas.py \
+		lambdas/backend_config.py \
+		lambdas/eks_config.py \
+		lambdas/exac.py \
+		lambdas/manifests.py \
+		lambdas/setup_lenses.py \
+		--count --select=E9,F63,F7,F82 --show-source --statistic
+	@. venv/bin/activate ; flake8 lambdas/lambdas.py \
+		lambdas/backend_config.py \
+		lambdas/eks_config.py \
+		lambdas/exac.py \
+		lambdas/manifests.py \
+		lambdas/setup_lenses.py \
+	--count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
 tests: virtenv
 	@. venv/bin/activate ; python3 -m pytest ./tests/
-
 

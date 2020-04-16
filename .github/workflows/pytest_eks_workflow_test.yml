@@ -1,0 +1,23 @@
+name: Pytests Workflow Tests
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: [3.8]
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: Setup Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Run tests
+        run: |
+          cd ./aws/eks/
+          python -m pip install --upgrade pip virtualenv
+          make tests
