@@ -57,6 +57,7 @@ class SetupLenes():
         username,
         password,
         deployment_name,
+        lenses_version,
         kafka_metrics_opts=None,
         registry=None,
         connect=None
@@ -96,7 +97,8 @@ class SetupLenes():
 
         try:
             lmanifest = lenses_deployment_manifest.format(
-                lenses=deployment_name
+                lenses=deployment_name,
+                lv=lenses_version
             )
             manifest = yaml.safe_load(lmanifest)
             manifest['spec']['template']['spec']['containers'][0]['env'].append(

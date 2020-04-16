@@ -47,7 +47,7 @@ spec:
     spec:
       containers:
       - name: {lenses}
-        image:  lensesio/lenses:3.1
+        image:  lensesio/lenses:{lv}
         imagePullPolicy:  IfNotPresent
         lifecycle:
           postStart:

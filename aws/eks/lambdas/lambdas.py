@@ -93,6 +93,13 @@ def main_create(event, context):
         random.choice(string.ascii_letters) for i in range(32)
     )
     responseData["LensesPassword"] = lenses_admin_password
+    lenses_version = event['LensesVersion']
+    cver = len(lenses_version.split('.')) <=3 and len(lenses_version.split('.')) >=2
+    try:
+        for c in lenses_version.split('.'):
+            int(c)
+    except ValueError:
+        die("Error: %s does not appear to be a valid version" % lenses_version)
 
     # Get Lenses license
     try:
@@ -157,6 +164,7 @@ def main_create(event, context):
         username=lenses_admin_username,
         password=lenses_admin_password,
         deployment_name=deployment_name,
+        lenses_version=lenses_version,
         kafka_metrics_opts=kafka_metrics_opts
     )
     if err != 0:
