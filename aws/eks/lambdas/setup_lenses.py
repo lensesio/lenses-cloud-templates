@@ -56,6 +56,8 @@ class SetupLenes():
         zookeepers,
         username,
         password,
+        deployment_name,
+        lenses_version,
         kafka_metrics_opts=None,
         registry=None,
         connect=None
@@ -94,7 +96,11 @@ class SetupLenes():
         """
 
         try:
-            manifest = yaml.safe_load(lenses_deployment_manifest)
+            lmanifest = lenses_deployment_manifest.format(
+                lenses=deployment_name,
+                lv=lenses_version
+            )
+            manifest = yaml.safe_load(lmanifest)
             manifest['spec']['template']['spec']['containers'][0]['env'].append(
                 {
                     'name': 'LENSES_KAFKA_BROKERS',
@@ -216,7 +222,10 @@ class SetupLenes():
             f.write(lenses_manifest)
             f.close()
 
-            service_manifest = yaml.safe_load(lenses_service_manifest)
+            smanifest = lenses_service_manifest.format(
+                lenses=deployment_name
+            )
+            service_manifest = yaml.safe_load(smanifest)
             service_manifest = yaml.dump(
                 service_manifest,
                 default_flow_style=False

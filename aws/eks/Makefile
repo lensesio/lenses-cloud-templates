@@ -7,6 +7,7 @@ AWS_DEFAULT_REGION?=eu-north-1
 KafkaClusterName?=vdev-kafka
 LensesLicense?=test
 LambdaRole?=roleArn
+LambdaFunctionName?=dev-LambdaEKSConfig-NNN
 PROFILE?=default
 PROJECT=lambdas
 
@@ -61,10 +62,9 @@ s3: zip
 	--profile $(PROFILE) \
 	cp lambdas.zip s3://$(S3Bucket)/$(S3BucketPrefix)/lambdas.zip
 
-
 .PHONY: update_lambda
 update_lambda: zip
-	@aws lambda update-function-code --function-name dev-LambdaEKSConfig-NNN --zip-file fileb://lambdas.zip
+	@aws lambda update-function-code --function-name $(LambdaFunctionName) --zip-file fileb://lambdas.zip
 
 mkvirtenv:
 	@if [ ! -e venv ]; then \
