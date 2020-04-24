@@ -44,7 +44,7 @@ Parameters:
   S3BucketPrefix:
     Description: S3 Bucket prefix localtion for the lambdas
     Type: String
-    Default: "eks/3.0.8"
+    Default: "eks"
   KafkaClusterName:
     Description: Name of the MSK Cluster. This is only the name, not ARN. The ARN value will be derieved automatically.
     Type: String

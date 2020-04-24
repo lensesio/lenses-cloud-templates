@@ -213,7 +213,7 @@ Resources:
       ContainerDefinitions:
         - Name: lenses
           Essential: true
-          Image: lensesio/lenses:3.0
+          Image: lensesio/lenses:3.1
           Cpu: !Ref 'ContainerCpu'
           Memory: !Ref 'ContainerMemory'
           Environment:
