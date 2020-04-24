@@ -34,6 +34,8 @@ class TestSetupLenses():
             zookeepers=zookeepers,
             username=lenses_admin_username,
             password=lenses_admin_password,
+            deployment_name="eks_test_deployment",
+            lenses_version="eks_lenses_version",
             kafka_metrics_opts=kafka_metrics_opts
         )
         assert err == 0
