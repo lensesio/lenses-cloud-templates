@@ -176,7 +176,7 @@ Resources:
       Description: Dev Lambda
       Handler: lambdas.lambda_handler
       Runtime: python3.7
-      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/${LambdaRole}
+      Role: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${LambdaRole}'
       MemorySize: 128
       Timeout: 900
       Code:
