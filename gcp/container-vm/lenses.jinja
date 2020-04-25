@@ -13,7 +13,7 @@ resources:
   type: container_instance_template.jinja
   properties:
     zone: {{ properties['zone'] }}
-    dockerImage: lensesio/lenses:3.0
+    dockerImage: lensesio/lenses:3.1
     containerImage: family/cos-stable
     port: {{ properties['lensesPort'] }}
     network: {{ properties['network'] }}
