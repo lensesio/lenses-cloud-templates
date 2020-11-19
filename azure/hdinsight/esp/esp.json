@@ -1,0 +1,306 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "clusterName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the HDInsight cluster"
+      }
+    },
+    "galleryPackageIdentity": {
+      "type": "string",
+      "metadata": {
+        "description": "Lenses.io, Realtime streaming DataOps at the heart of your Business."
+      },
+      "defaultValue": "lenses-io"
+    },
+    "edgeNodeSize": {
+      "type": "string",
+      "metadata": {
+        "description": "Size of the edge node that hosts the application"
+      },
+      "defaultValue": "Standard_DS3_V2",
+      "allowedValues": [
+        "Standard_A4_V2",
+        "Standard_A8_V2",
+        "Standard_D3_V2",
+        "Standard_D4_V2",
+        "Standard_D5_V2",
+        "Standard_D12_V2",
+        "Standard_D13_V2",
+        "Standard_D14_V2",
+        "Standard_D15_V2",
+        "Standard_DS3_V2",
+        "Standard_DS4_V2",
+        "Standard_DS5_V2",
+        "Standard_DS12_V2",
+        "Standard_DS13_V2",
+        "Standard_DS14_V2",
+        "Standard_DS15_V2"
+      ]
+    },
+    "lensesVersion": {
+      "type": "string",
+      "metadata": {
+        "description": "The version of Lenses"
+      },
+      "defaultValue": "4.0",
+      "allowedValues": [
+        "4.0",
+        "3.2",
+        "3.1",
+        "2.3"
+      ]
+    },
+    "licenseKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "(Can be empty for 4.0 free version) Your own license for Lenses. Please download it here https://www.lenses.io/downloads/"
+      }
+    },
+    "lensesAdminUserName": {
+      "type": "string",
+      "defaultValue": "admin",
+      "metadata": {
+        "description": "The default admin name"
+      }
+    },
+    "lensesAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Password for the default admin"
+      }
+    },
+    "espEnabled": {
+      "type": "string",
+      "allowedValues": [
+        "True",
+        "False"
+      ],
+      "defaultValue": "False",
+      "metadata": {
+        "description": "Enable ESP Authentication (This does not enable ESP but informs the Lenses that GSSAPI protocol should be used."
+      }
+    },
+    "authenticateWithCredentials": {
+      "type": "string",
+      "allowedValues": [
+        "True",
+        "False"
+      ],
+      "defaultValue": "False",
+      "metadata": {
+        "description": "Use username (Principal Name) and password to authenticate with AD DS."
+      }
+    },
+    "activeDirectoryDomainUser": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "(If enableESP and not keyTab) Provide the username that Lenses will use to authenticate with Kafka. User must be an AD user that has been synced in HDInsight."
+      }
+    },
+    "domainUserPassword": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The pasword of the domainUser."
+      }
+    },
+    "authenticateWithKeytab": {
+      "type": "string",
+      "allowedValues": [
+        "True",
+        "False"
+      ],
+      "defaultValue": "False",
+      "metadata": {
+        "description": "Use keytab instead of providing a domain user and password. See keyTabB64Encode paramater."
+      }
+    },
+    "keytabBase64Encoded": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The base64 encoded string from the keytab. Example for creating the base64 encoded string: base64 < krb5.keytab | tr -d '\\n'"
+      }
+    },
+    "keytabPrincipalName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The principal to be used with the provided keyTab. Example: kafka/myuser@MY.DOMAIN"
+      }
+    },
+    "useCustomJaas": {
+      "type": "string",
+      "allowedValues": [
+        "True",
+        "False"
+      ],
+      "defaultValue": "False",
+      "metadata": {
+        "description": "Jaas keyTab should point to /etc/krb5.d/krb5.keytab. For custom /path/name, use customJaasKeytabLocation & customJaasKeytabName"
+      }
+    },
+    "jaasBase64Encoded": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The base64 encoded string from the jaas file. Example for creating the base64 encoded string: base64 < kafka_client_jaas.conf | tr -d '\\n'"
+      }
+    },
+    "customJaasKeytabLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "The location to store the keyTab. Recommended to leave it under /etc/krb5.d"
+      },
+      "defaultValue": "/etc/krb5.d"
+    },
+    "customJaasKeytabName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the keyTab to be stored. Recommended to leave it under krb5.keytab"
+      },
+      "defaultValue": "krb5.keytab"
+    },
+    "installScriptURL": {
+      "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/lensesio/lenses-cloud-templates/feat/azure_hdinsight_esp/azure/hdinsight/esp/configure.sh",
+      "metadata": {
+        "description": "(Warning, URL must be accessible from the Nodes Network) The install script that will be used to configure the Edgenode and install Lenses"
+      }
+    },
+    "useCustomLensesArchive": {
+      "type": "string",
+      "allowedValues": [
+        "True",
+        "False"
+      ],
+      "defaultValue": "False",
+      "metadata": {
+        "description": "Warning, the custom URL must be accesible from the HDinsight Nodes network and compatible with the configuration options appended by the install script"
+      }
+    },
+    "customArchiveURL": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Provide the url with your own Lenses archive (Warning, unless you have provided your own install script, downloaded archive must be tar.gz)"
+      }
+    },
+    "appSubDomainSuffix": {
+      "type": "string",
+      "defaultValue": "len",
+      "metadata": {
+        "description": "The applications subdomain Suffix. Each edgenode must have a unique suffix. If you have deployed another instance of Lenses, please use a different suffix"
+      }
+    },
+    "disableGatewayAuthentication": {
+      "type": "string",
+      "allowedValues": [
+        "True",
+        "False"
+      ],
+      "defaultValue": "False",
+      "metadata": {
+        "description": "Select if you want to disable the fateway authentication"
+      }
+    },
+    "ingressPort": {
+      "type": "string",
+      "defaultValue": "9991",
+      "metadata": {
+        "description": "Ingress destionation port. This will also be the Lenses listening port"
+      }
+    }
+  },
+  "variables": {
+    "applicationName": "[concat(parameters('galleryPackageIdentity'), '-', uniquestring('applicationName'))]",
+    "sQ": "'",
+    "addClusterNameParam": "[concat('-n ', parameters('clusterName'))]",
+    "addLensesVersionParam": "[concat(variables('addClusterNameParam'), ' -V ', parameters('lensesVersion'))]",
+    "addLensesLicenseKeyParam": "[concat(variables('addLensesVersionParam'), ' -l ', variables('sQ'), parameters('licenseKey'), variables('sQ'))]",
+    "addLensesAdminUserNameParam": "[concat(variables('addLensesLicenseKeyParam'), ' -U ', variables('sQ'), parameters('lensesAdminUserName'), variables('sQ'))]",
+    "addLensesAdminPasswordParam": "[concat(variables('addLensesAdminUserNameParam'), ' -P ', variables('sQ'), parameters('lensesAdminPassword'), variables('sQ'))]",
+    "addEspEnabledParam": "[concat(variables('addLensesAdminPasswordParam'), ' -e ',  parameters('espEnabled'))]",
+    "addAuthenticateWithCredentialsParam": "[concat(variables('addEspEnabledParam'), ' -c ',  parameters('authenticateWithCredentials'))]",
+    "addActiveDirectoryDomainUserParam": "[concat(variables('addAuthenticateWithCredentialsParam'), ' -u ',  parameters('activeDirectoryDomainUser'))]",
+    "addDomainUserPasswordParam": "[concat(variables('addActiveDirectoryDomainUserParam'), ' -p ', variables('sQ'), parameters('domainUserPassword'), variables('sQ'))]",
+    "addAuthenticateWithKeytabParam": "[concat(variables('addDomainUserPasswordParam'), ' -k ',  parameters('authenticateWithKeytab'))]",
+    "addKeytabBase64EncodedParam": "[concat(variables('addAuthenticateWithKeytabParam'), ' -v ', variables('sQ'), parameters('keytabBase64Encoded'), variables('sQ'))]",
+    "addKeyTabPrincipalNameParam": "[concat(variables('addKeytabBase64EncodedParam'), ' -x ', variables('sQ'), parameters('keytabPrincipalName'), variables('sQ'))]",
+    "addUseCustomJaasParam": "[concat(variables('addKeyTabPrincipalNameParam'), ' -j ',  parameters('useCustomJaas'))]",
+    "addJaasBase64EncodedParam": "[concat(variables('addUseCustomJaasParam'), ' -J ', variables('sQ'), parameters('jaasBase64Encoded'), variables('sQ'))]",
+    "addCustomJaasKeytabLocationParam": "[concat(variables('addJaasBase64EncodedParam'), ' -L ', variables('sQ'), parameters('customJaasKeytabLocation'), variables('sQ'))]",
+    "addCustomJaasKeytabNameParam": "[concat(variables('addCustomJaasKeytabLocationParam'), ' -N ', variables('sQ'), parameters('customJaasKeytabName'), variables('sQ'))]",
+    "addUseCustomLensesArchiveParam": "[concat(variables('addCustomJaasKeytabNameParam'), ' -a ', variables('sQ'), parameters('useCustomLensesArchive'), variables('sQ'))]",
+    "addCustomArchiveURLParam": "[concat(variables('addUseCustomLensesArchiveParam'), ' -R ', variables('sQ'), parameters('customArchiveURL'), variables('sQ'))]",
+    "addIngressPortParam": "[concat(variables('addCustomArchiveURLParam'), ' -I ', variables('sQ'), parameters('ingressPort'), variables('sQ'))]",
+    "finalParameters": "[variables('addIngressPortParam')]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2018-02-01",
+      "name": "pid-4f74d888-8490-52d5-9694-27eeebd9a4e6",
+      "type": "Microsoft.Resources/deployments",
+      "properties": {
+          "mode": "Incremental",
+          "template": {
+            "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+            "contentVersion": "1.0.0.0",
+              "resources": []
+          }
+      }
+    },
+    {
+      "apiVersion": "2018-06-01-preview",
+      "type": "Microsoft.HDInsight/clusters/applications",
+      "name": "[concat(parameters('clusterName'),'/', variables('applicationName'))]",
+      "dependsOn": [],
+      "properties": {
+        "marketPlaceIdentifier": "[parameters('galleryPackageIdentity')]",
+        "computeProfile": {
+          "roles": [
+            {
+              "name": "edgenode",
+              "targetInstanceCount": 1,
+              "hardwareProfile": {
+                "vmSize": "[parameters('edgeNodeSize')]"
+              }
+            }
+          ]
+        },
+        "installScriptActions": [
+          {
+            "name": "[concat('action-', variables('applicationName'), '-', uniquestring('applicationName'))]",
+            "uri": "[parameters('installScriptURL')]",
+            "parameters": "[variables('finalParameters')]",
+            "roles": [
+              "edgenode"
+            ]
+          }
+        ],
+        "uninstallScriptActions": [],
+        "httpsEndpoints": [
+          {
+            "subDomainSuffix": "[parameters('appSubDomainSuffix')]",
+            "disableGatewayAuth": "[bool(parameters('disableGatewayAuthentication'))]",
+            "destinationPort": "[int(parameters('ingressPort'))]",
+            "accessModes": [
+              "webpage"
+            ]
+          }
+        ],
+        "applicationType": "CustomApplication"
+      }
+    }
+  ],
+  "outputs": {
+    "application": {
+      "type": "object",
+      "value": "[reference(resourceId('Microsoft.HDInsight/clusters/applications/', parameters('clusterName'), variables('applicationName')))]"
+    }
+  }
+}
