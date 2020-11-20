@@ -533,13 +533,8 @@ touch /etc/krb5.d/kafka_client_jaas.conf
 cat << EOF > /etc/krb5.d/kafka_client_jaas.conf
 KafkaClient {
    com.sun.security.auth.module.Krb5LoginModule required
-   refreshKrb5Config=true
-   useTicketCache=true
-   renewTGT=true
    storeKey=true
-   debug=true
-   isInitiator=true
-   //storePass=true
+   useTicketCache=false
    useKeyTab=true
    keyTab="${ESP_KEYTAB_LOCATION}/${ESP_KEYTAB_NAME}"
    principal="${ESP_KEYTAB_PRINCIPAL}"
@@ -548,13 +543,8 @@ KafkaClient {
 };
 Client {
    com.sun.security.auth.module.Krb5LoginModule required
-   refreshKrb5Config=true
-   useTicketCache=true
-   renewTGT=true
    storeKey=true
-   debug=true
-   isInitiator=true
-   //storePass=true
+   useTicketCache=false
    useKeyTab=true
    keyTab="${ESP_KEYTAB_LOCATION}/${ESP_KEYTAB_NAME}"
    principal="${ESP_KEYTAB_PRINCIPAL}"
