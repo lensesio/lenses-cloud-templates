@@ -115,7 +115,7 @@ Clean
 Downloaod the script locally
 
     cd /opt
-    curl -LO https://raw.githubusercontent.com/ulfox/hdinsight-scripts/main/configure.sh
+    curl -LO https://raw.githubusercontent.com/lensesio/lenses-cloud-templates/feat/azure_hdinsight_esp/azure/hdinsight/esp/configure.sh
     chmod +x configure.sh
 
 Run the script
