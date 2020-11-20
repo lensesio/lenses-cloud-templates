@@ -541,15 +541,6 @@ KafkaClient {
    serviceName="kafka";
 
 };
-Client {
-   com.sun.security.auth.module.Krb5LoginModule required
-   storeKey=true
-   useTicketCache=false
-   useKeyTab=true
-   keyTab="${ESP_KEYTAB_LOCATION}/${ESP_KEYTAB_NAME}"
-   principal="${ESP_KEYTAB_PRINCIPAL}"
-   serviceName="zookeeper";
-};
 EOF
 
 touch /etc/krb5.d/kafka_client_jaas_creds.conf
@@ -567,20 +558,6 @@ KafkaClient {
    storePass=true
    principal="${ESP_USERNAME}"
    serviceName="kafka";
-};
-Client {
-   com.sun.security.auth.module.Krb5LoginModule required
-   refreshKrb5Config=true
-   useTicketCache=true
-   renewTGT=true
-   doNotPrompt=true
-   useKeyTab=false
-   storeKey=false
-   debug=true
-   isInitiator=true
-   storePass=true
-   principal="${ESP_USERNAME}"
-   serviceName="zookeeper";
 };
 EOF
 chmod 0600 /etc/krb5.d/kafka_client_jaas.conf /etc/krb5.d/kafka_client_jaas_creds.conf
