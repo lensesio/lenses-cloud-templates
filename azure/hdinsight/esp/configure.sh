@@ -140,6 +140,36 @@ while [ "${#}" -gt 0 ]; do
                 export LENSES_PORT="${2}"
                 shift 1
             fi;;
+        "-t")
+            if args_check "${2}"; then
+                export LENSES_STORAGE_TYPE="${2}"
+                shift 1
+            fi;;
+        "-H")
+            if args_check "${2}"; then
+                export LENSES_STORAGE_POSTGRES_HOSTNAME="${2}"
+                shift 1
+            fi;;
+        "-E")
+            if args_check "${2}"; then
+                export LENSES_STORAGE_POSTGRES_PORT="${2}"
+                shift 1
+            fi;;
+        "-A")
+            if args_check "${2}"; then
+                export LENSES_STORAGE_POSTGRES_USERNAME="${2}"
+                shift 1
+            fi;;
+        "-K")
+            if args_check "${2}"; then
+                export LENSES_STORAGE_POSTGRES_PASSWORD="${2}"
+                shift 1
+            fi;;
+        "-D")
+            if args_check "${2}"; then
+                export LENSES_STORAGE_POSTGRES_DATABASE="${2}"
+                shift 1
+            fi;;
         *)
             echo "Option ${optname} is not supported" | tee -a ;;
     esac
@@ -366,6 +396,18 @@ cat << EOF > /opt/lenses/security.conf
 lenses.security.user="${LENSES_ADMIN_NAME}"
 lenses.security.password="${LENSES_PASSWORD_NAME}"
 EOF
+
+if [ "${LENSES_STORAGE_TYPE}" == "postgres" ]; then
+cat << EOF >> /opt/lenses/lenses.conf
+lenses.storage.postgres.database: "${LENSES_STORAGE_POSTGRES_DATABASE}"
+lenses.storage.postgres.host: "${LENSES_STORAGE_POSTGRES_HOSTNAME}"
+lenses.storage.postgres.port: "${LENSES_STORAGE_POSTGRES_PORT}"
+lenses.storage.postgres.username: "${LENSES_STORAGE_POSTGRES_USERNAME}"
+EOF
+cat << EOF >> /opt/lenses/security.conf
+lenses.storage.postgres.password: "${LENSES_STORAGE_POSTGRES_PASSWORD}"
+EOF
+fi
 
 ### Export Kafka Broker Protocol
 if [ "${ESP_ENABLED}" == "False" ]; then
