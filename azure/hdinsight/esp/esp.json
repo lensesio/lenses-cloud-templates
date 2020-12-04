@@ -47,6 +47,7 @@
       },
       "defaultValue": "4.0",
       "allowedValues": [
+        "4.1",
         "4.0",
         "3.2",
         "3.1",
@@ -167,7 +168,7 @@
     },
     "installScriptURL": {
       "type": "string",
-      "defaultValue": "https://raw.githubusercontent.com/lensesio/lenses-cloud-templates/feat/azure_hdinsight_esp/azure/hdinsight/esp/configure.sh",
+      "defaultValue": "https://raw.githubusercontent.com/ulfox/hdinsight-scripts/main/configure.sh",
       "metadata": {
         "description": "(Warning, URL must be accessible from the Nodes Network) The install script that will be used to configure the Edgenode and install Lenses"
       }
@@ -214,12 +215,58 @@
       "metadata": {
         "description": "Ingress destionation port. This will also be the Lenses listening port"
       }
+    },
+    "storageType": {
+      "type": "string",
+      "defaultValue": "local",
+      "allowedValues": [
+        "local",
+        "postgres"
+      ],
+      "metadata": {
+        "description": "Lenses Storage type"
+      }
+    },
+    "storagePostgresHostname": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "(Optional - Requires Storage Type is postgres) Postgres Hostname"
+      }
+    },
+    "storagePostgresPort": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "(Optional - Requires Storage Type is postgres) Postgres Port"
+      }
+    },
+    "storagePostgresUsername": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "(Optional - Requires Storage Type is postgres) Postgres Username"
+      }
+    },
+    "storagePostgresPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "(Optional - Requires Storage Type is postgres) Postgres Password"
+      }
+    },
+    "storagePostgresDatabase": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "(Optional - Requires Storage Type is postgres) Postgres Database"
+      }
     }
   },
   "variables": {
     "applicationName": "[concat(parameters('galleryPackageIdentity'), '-', uniquestring('applicationName'))]",
     "sQ": "'",
-    "addClusterNameParam": "[concat('-n ', parameters('clusterName'))]",
+
+    "addClusterNameParam": "[concat(' -n ', parameters('clusterName'))]",
     "addLensesVersionParam": "[concat(variables('addClusterNameParam'), ' -V ', parameters('lensesVersion'))]",
     "addLensesLicenseKeyParam": "[concat(variables('addLensesVersionParam'), ' -l ', variables('sQ'), parameters('licenseKey'), variables('sQ'))]",
     "addLensesAdminUserNameParam": "[concat(variables('addLensesLicenseKeyParam'), ' -U ', variables('sQ'), parameters('lensesAdminUserName'), variables('sQ'))]",
@@ -238,7 +285,13 @@
     "addUseCustomLensesArchiveParam": "[concat(variables('addCustomJaasKeytabNameParam'), ' -a ', variables('sQ'), parameters('useCustomLensesArchive'), variables('sQ'))]",
     "addCustomArchiveURLParam": "[concat(variables('addUseCustomLensesArchiveParam'), ' -R ', variables('sQ'), parameters('customArchiveURL'), variables('sQ'))]",
     "addIngressPortParam": "[concat(variables('addCustomArchiveURLParam'), ' -I ', variables('sQ'), parameters('ingressPort'), variables('sQ'))]",
-    "finalParameters": "[variables('addIngressPortParam')]"
+    "storageTypeParam": "[concat(variables('addIngressPortParam'), ' -t ', parameters('storageType'))]",
+    "storagePostgresHostnameParam": "[concat(variables('storageTypeParam'), ' -H ', parameters('storagePostgresHostname'))]",
+    "storagePostgresPortParam": "[concat(variables('storagePostgresHostnameParam'), ' -E ', parameters('storagePostgresPort'))]",
+    "storagePostgresUsernameParam": "[concat(variables('storagePostgresPortParam'), ' -A ', parameters('storagePostgresUsername'))]",
+    "storagePostgresPasswordParam": "[concat(variables('storagePostgresUsernameParam'), ' -K ', parameters('storagePostgresPassword'))]",
+    "storagePostgresDatabaseParam": "[concat(variables('storagePostgresPasswordParam'), ' -D ', parameters('storagePostgresDatabase'))]",
+    "finalParameters": "[variables('storagePostgresDatabaseParam')]"
   },
   "resources": [
     {
